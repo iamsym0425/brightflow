@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PT 루틴 트래커</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080808;--s1:#111;--s2:#181818;--s3:#222;--brd:rgba(255,255,255,0.07);--brd2:rgba(255,255,255,0.14);--acc:#c8f135;--acd:rgba(200,241,53,0.10);--txt:#f2f2f2;--t2:#888;--t3:#484848;--done:rgba(200,241,53,0.07);--doneb:rgba(200,241,53,0.24);--r:16px;--rs:10px;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{background:var(--bg);color:var(--txt);font-family:'Noto Sans KR',sans-serif;min-height:100vh;overscroll-behavior:none;}
+.page{display:none;max-width:480px;margin:0 auto;padding:0 0 90px;}
+.page.active{display:block;}
+
+/* NAV */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:0.5px solid var(--brd2);z-index:100;}
+.bnav-i{display:flex;max-width:480px;margin:0 auto;}
+.nb{flex:1;padding:10px 0 18px;border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--t3);cursor:pointer;transition:color .2s;}
+.nb.on{color:var(--acc);}
+.nb-ic{font-size:22px;line-height:1;}
+.nb-lb{font-size:11px;font-weight:500;}
+
+/* SHARED */
+.card{background:var(--s1);border:0.5px solid var(--brd2);border-radius:var(--r);}
+.sec-t{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.16em;text-transform:uppercase;padding:16px 20px 8px;}
+.hdiv{margin:0 20px 12px;height:0.5px;background:var(--brd);}
+.iBtn{width:38px;height:38px;border-radius:50%;border:0.5px solid var(--brd2);background:var(--s2);color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.iBtn:active{transform:scale(.9);}
+
+/* HEADER */
+.app-hdr{padding:38px 20px 0;}
+.hdr-row{background:var(--s1);border:0.5px solid var(--brd2);border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:12px;}
+.logo-c{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#e8d5f5,#f0bfcd);flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;border:2px solid rgba(255,255,255,.15);}
+.logo-j{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#3a2a4a;line-height:1;margin-top:1px;}
+.logo-p{position:absolute;top:5px;left:4px;font-size:6px;font-weight:700;color:#5a3a6a;letter-spacing:.1em;}
+.hdr-info{flex:1;}
+.hdr-sub{font-size:10px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;}
+.hdr-name{font-size:15px;font-weight:700;}
+.hdr-name em{color:var(--acc);font-style:normal;}
+
+/* DATE/CLOCK */
+.dt-card{margin:12px 20px 0;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;}
+.date-big{font-family:'Bebas Neue',sans-serif;font-size:34px;color:var(--txt);letter-spacing:.03em;line-height:1;}
+.date-big em{color:var(--acc);font-style:normal;}
+.day-kor{font-size:10px;color:var(--t3);margin-top:3px;}
+.time-c{font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--t2);letter-spacing:.04em;}
+
+/* 1RM CARD */
+.orm-card{margin:10px 20px 0;border-radius:var(--r);overflow:hidden;}
+.orm-toggle{background:var(--s1);border:0.5px solid var(--brd2);border-radius:var(--r);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;transition:border-radius .2s;}
+.orm-toggle.open{border-radius:var(--r) var(--r) 0 0;}
+.orm-toggle-l{font-size:13px;font-weight:700;color:var(--txt);}
+.orm-toggle-sub{font-size:11px;color:var(--t3);margin-top:2px;}
+.orm-arrow{font-size:18px;color:var(--t3);transition:transform .25s;}
+.orm-toggle.open .orm-arrow{transform:rotate(180deg);}
+.orm-body{background:var(--s1);border:0.5px solid var(--brd2);border-top:none;border-radius:0 0 var(--r) var(--r);display:none;padding:0 0 14px;}
+.orm-body.open{display:block;}
+.orm-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:14px 14px 0;}
+.orm-iw{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.orm-il{font-size:11px;color:var(--t3);text-align:center;}
+.orm-i{width:100%;background:var(--s2);border:0.5px solid var(--brd2);border-radius:var(--rs);color:var(--txt);font-family:'Bebas Neue',sans-serif;font-size:26px;text-align:center;padding:9px 4px;outline:none;-webkit-appearance:none;}
+.orm-i:focus{border-color:var(--acc);}
+.orm-unit{font-size:10px;color:var(--t3);}
+.orm-btn{margin:10px 14px 0;display:block;width:calc(100% - 0px);padding:12px;border-radius:var(--rs);border:none;background:var(--acc);color:#080808;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.orm-res{padding:10px 14px 0;display:none;}
+.orm-res.show{display:block;}
+.orm-res-tt{font-size:10px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;}
+.orm-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.orm-chip{background:var(--acd);border:0.5px solid rgba(200,241,53,.3);border-radius:99px;padding:5px 12px;font-size:12px;color:var(--acc);}
+.orm-apply{width:100%;padding:11px;border-radius:var(--rs);border:0.5px solid rgba(200,241,53,.4);background:var(--acd);color:var(--acc);font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+
+/* TIMER */
+.tmr-card{margin:10px 20px 0;padding:14px 16px;}
+.tmr-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.tmr-lbl{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.12em;text-transform:uppercase;}
+.tmr-st{font-size:11px;color:var(--t3);}
+.tmr-st.on{color:var(--acc);}
+.tmr-n{font-family:'Bebas Neue',sans-serif;font-size:62px;color:var(--txt);letter-spacing:.04em;text-align:center;line-height:1;margin-bottom:8px;transition:color .3s;}
+.tmr-n.warn{color:#f59e0b;}
+.tmr-n.fin{color:var(--acc);}
+.tmr-bb{height:3px;background:var(--s3);border-radius:99px;overflow:hidden;margin-bottom:10px;}
+.tmr-bf{height:100%;background:var(--acc);border-radius:99px;transition:width .8s linear,background .3s;}
+.tmr-bf.warn{background:#f59e0b;}
+.tbtns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.tb{padding:9px 4px;border-radius:var(--rs);border:0.5px solid var(--brd2);background:var(--s2);color:var(--t2);font-family:'Noto Sans KR',sans-serif;font-size:11px;font-weight:500;cursor:pointer;text-align:center;line-height:1.3;transition:all .2s;}
+.tb:active{transform:scale(.95);}
+.tb.p{border-color:rgba(200,241,53,.22);}
+.tb.p.on{background:var(--acd);border-color:rgba(200,241,53,.45);color:var(--acc);}
+.tb.stp{border-color:rgba(239,68,68,.2);color:#f87171;}
+
+/* PROGRESS */
+.prog-row{display:flex;align-items:center;gap:18px;padding:12px 20px 0;}
+.ring-w{position:relative;width:70px;height:70px;flex-shrink:0;}
+.ring-w svg{transform:rotate(-90deg);}
+.rbg{fill:none;stroke:var(--s2);stroke-width:5;}
+.rf{fill:none;stroke:var(--acc);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .5s ease;}
+.rlb{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.rpct{font-family:'Bebas Neue',sans-serif;font-size:19px;line-height:1;}
+.rsub{font-size:8px;color:var(--t3);letter-spacing:.06em;text-transform:uppercase;}
+.pn{font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1;}
+.pn span{color:var(--t3);}
+.pd{font-size:11px;color:var(--t2);margin-top:2px;}
+
+/* SPLIT TABS */
+.split-tabs{display:flex;gap:7px;padding:12px 20px 0;overflow-x:auto;scrollbar-width:none;}
+.split-tabs::-webkit-scrollbar{display:none;}
+.stab{flex-shrink:0;min-width:76px;padding:11px 10px;background:var(--s1);border:0.5px solid var(--brd);border-radius:var(--r);cursor:pointer;user-select:none;transition:all .2s;}
+.stab:active{transform:scale(.96);}
+.stab.on{background:var(--acd);border-color:rgba(200,241,53,.3);}
+.stab-l{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--t3);line-height:1;margin-bottom:3px;transition:color .2s;}
+.stab.on .stab-l{color:var(--acc);}
+.stab-b{font-size:9px;color:var(--t3);line-height:1.4;transition:color .2s;}
+.stab.on .stab-b{color:var(--t2);}
+.stab-pg{margin-top:7px;height:2px;background:var(--s2);border-radius:99px;overflow:hidden;}
+.stab-pgf{height:100%;background:var(--acc);border-radius:99px;transition:width .3s;}
+
+/* EXERCISE CARD */
+.ex-card{margin:0 20px 7px;background:var(--s1);border:0.5px solid var(--brd);border-radius:var(--r);padding:12px 12px 11px;transition:background .3s,border-color .3s;}
+.ex-card.done{background:var(--done);border-color:var(--doneb);}
+.ex-top{display:flex;align-items:flex-start;gap:9px;margin-bottom:10px;}
+.ex-num{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--t3);flex-shrink:0;width:20px;padding-top:1px;}
+.ex-card.done .ex-num{color:var(--acc);}
+.ex-body{flex:1;min-width:0;}
+.ex-name-txt{font-size:14px;font-weight:700;color:var(--txt);line-height:1.3;margin-bottom:3px;}
+.ex-card.done .ex-name-txt{color:var(--acc);}
+.ex-meta-txt{font-size:12px;color:var(--t3);}
+.ex-card.done .ex-meta-txt{color:rgba(200,241,53,.4);}
+.ex-right{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;}
+.ex-diagram{width:60px;height:60px;border-radius:50%;overflow:hidden;border:1.5px solid var(--brd2);background:#141414;}
+.ex-card.done .ex-diagram{border-color:rgba(200,241,53,.25);}
+.ex-diagram svg{display:block;width:100%;height:100%;}
+.ex-edit-btn{width:26px;height:26px;border-radius:50%;border:0.5px solid var(--brd2);background:var(--s2);color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;}
+.done-chip{font-size:9px;color:var(--acc);font-weight:700;opacity:0;transition:opacity .3s;letter-spacing:.04em;}
+.ex-card.done .done-chip{opacity:1;}
+.sets-row{display:flex;gap:6px;flex-wrap:wrap;}
+.sbt{width:44px;height:44px;border-radius:var(--rs);border:0.5px solid var(--brd2);background:var(--s2);cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--t3);display:flex;align-items:center;justify-content:center;transition:all .16s;position:relative;overflow:hidden;}
+.sbt:active{transform:scale(.86);}
+.sbt.ck{background:var(--acc);border-color:var(--acc);color:#080808;}
+.sn2{transition:opacity .1s;}
+.sc2{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .1s;}
+.sbt.ck .sn2{opacity:0;}
+.sbt.ck .sc2{opacity:1;}
+.sc2 svg{width:16px;height:16px;}
+.done-bn{margin:12px 20px 0;border-radius:var(--r);padding:14px;text-align:center;display:none;}
+.done-bn.show{display:block;background:var(--done);border:0.5px solid var(--doneb);}
+.done-tt{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--acc);}
+.done-st{font-size:11px;color:var(--t2);margin-top:2px;}
+.rst-btn{display:block;margin:8px 20px 0;width:calc(100% - 40px);padding:12px;border:0.5px solid var(--brd2);border-radius:var(--r);background:var(--s1);color:var(--t2);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;}
+
+/* STATS */
+.stat-2g{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px;}
+.stat-card{background:var(--s1);border:0.5px solid var(--brd2);border-radius:var(--r);padding:18px;text-align:center;}
+.stat-big{font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--acc);line-height:1;}
+.stat-lb{font-size:12px;color:var(--t3);margin-top:5px;}
+.week-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:0 20px;}
+.wd{background:var(--s1);border:0.5px solid var(--brd);border-radius:10px;padding:8px 4px;text-align:center;}
+.wd.today{border-color:rgba(200,241,53,.4);}
+.wd.worked{background:var(--acd);}
+.wd-n{font-size:10px;color:var(--t3);}
+.wd-d{font-size:14px;font-family:'Bebas Neue',sans-serif;color:var(--t2);margin:2px 0;}
+.wd.today .wd-d{color:var(--acc);}
+.wd-dot{width:7px;height:7px;border-radius:50%;background:var(--s3);margin:4px auto 0;}
+.wd.worked .wd-dot{background:var(--acc);}
+.bpart-row{padding:0 20px 10px;}
+.bpart-lbl{display:flex;justify-content:space-between;margin-bottom:5px;}
+.bpart-nm{font-size:13px;color:var(--t2);}
+.bpart-v{font-size:13px;color:var(--t3);}
+.bpart-bg{height:7px;background:var(--s2);border-radius:99px;overflow:hidden;}
+.bpart-f{height:100%;background:var(--acc);border-radius:99px;transition:width .5s;}
+
+/* SETTINGS */
+.setting-block{margin:0 20px 12px;background:var(--s1);border:0.5px solid var(--brd2);border-radius:var(--r);overflow:hidden;}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:15px 16px;border-bottom:0.5px solid var(--brd);}
+.srow:last-child{border-bottom:none;}
+.srow-l{font-size:14px;font-weight:500;color:var(--txt);}
+.srow-sub{font-size:11px;color:var(--t3);margin-top:2px;}
+.split-opts{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding:14px 16px;}
+.sopt{padding:12px 6px;border-radius:var(--rs);border:0.5px solid var(--brd2);background:var(--s2);color:var(--t3);font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;cursor:pointer;text-align:center;transition:all .2s;}
+.sopt.on{background:var(--acd);border-color:rgba(200,241,53,.45);color:var(--acc);}
+.sopt:active{transform:scale(.95);}
+
+/* ── FULL EDIT OVERLAY ── */
+.fe-ov{position:fixed;inset:0;z-index:400;background:var(--bg);overflow-y:auto;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,1,.46,1);}
+.fe-ov.open{transform:translateY(0);}
+.fe-inner{max-width:480px;margin:0 auto;padding:0 0 80px;}
+.fe-bar{padding:50px 20px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--bg);z-index:10;border-bottom:0.5px solid var(--brd);}
+.fe-title{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--txt);letter-spacing:.03em;}
+.fe-save{padding:9px 20px;border-radius:99px;border:none;background:var(--acc);color:#080808;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.fe-cancel{padding:9px 14px;border-radius:99px;border:0.5px solid var(--brd2);background:transparent;color:var(--t3);font-family:'Noto Sans KR',sans-serif;font-size:13px;cursor:pointer;}
+.fe-name-wrap{margin:14px 20px;background:var(--s1);border:0.5px solid var(--brd2);border-radius:var(--r);padding:14px 16px;}
+.fe-name-lbl{font-size:10px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px;font-weight:700;}
+.fe-name-inp{width:100%;background:var(--s2);border:0.5px solid var(--brd2);border-radius:var(--rs);color:var(--txt);font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700;padding:12px 14px;outline:none;-webkit-appearance:none;}
+.fe-name-inp:focus{border-color:var(--acc);}
+.fe-day-tabs{display:flex;gap:8px;padding:0 20px 14px;overflow-x:auto;scrollbar-width:none;}
+.fe-day-tabs::-webkit-scrollbar{display:none;}
+.fe-dtab{flex-shrink:0;padding:9px 18px;border-radius:99px;border:0.5px solid var(--brd2);background:var(--s1);color:var(--t3);font-family:'Noto Sans KR',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;}
+.fe-dtab.on{background:var(--acd);border-color:rgba(200,241,53,.4);color:var(--acc);}
+.fe-sec-row{display:flex;align-items:center;gap:8px;margin:0 20px 10px;}
+.fe-sec-lbl{font-size:10px;color:var(--t3);white-space:nowrap;letter-spacing:.08em;text-transform:uppercase;font-weight:700;}
+.fe-sec-inp{flex:1;background:var(--s2);border:0.5px solid var(--brd2);border-radius:var(--rs);color:var(--t2);font-family:'Noto Sans KR',sans-serif;font-size:13px;padding:8px 12px;outline:none;-webkit-appearance:none;}
+.fe-sec-inp:focus{border-color:var(--acc);}
+.fe-ex-card{margin:0 20px 8px;background:var(--s1);border:0.5px solid var(--brd2);border-radius:var(--r);padding:13px 13px 12px;}
+.fe-ex-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+.fe-ex-num{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--t3);width:24px;text-align:center;flex-shrink:0;}
+.fe-ex-fields{flex:1;display:flex;flex-direction:column;gap:7px;}
+.fe-inp{width:100%;background:var(--s2);border:0.5px solid var(--brd2);border-radius:var(--rs);color:var(--txt);font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:500;padding:10px 13px;outline:none;-webkit-appearance:none;}
+.fe-inp:focus{border-color:var(--acc);}
+.fe-inp.sm{font-size:12px;color:var(--t2);padding:8px 12px;}
+.fe-del-btn{width:32px;height:32px;border-radius:50%;border:0.5px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#f87171;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;}
+.fe-del-btn:active{transform:scale(.9);}
+.fe-sets-row{display:flex;align-items:center;gap:10px;}
+.fe-sets-lbl{font-size:11px;color:var(--t3);}
+.fe-adj-btn{width:30px;height:30px;border-radius:50%;border:0.5px solid var(--brd2);background:var(--s2);color:var(--txt);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:all .2s;}
+.fe-adj-btn:active{transform:scale(.9);}
+.fe-adj-val{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--txt);min-width:28px;text-align:center;line-height:1;}
+.fe-add-btn{margin:4px 20px 0;width:calc(100% - 40px);padding:12px;border-radius:var(--r);border:0.5px dashed rgba(200,241,53,.3);background:var(--acd);color:var(--acc);font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;cursor:pointer;text-align:center;transition:all .2s;}
+.fe-add-btn:active{transform:scale(.98);}
+.fe-divider{margin:14px 20px 16px;height:0.5px;background:var(--brd2);}
+.fe-ex-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.fe-field-lbl{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;padding:8px 0 6px;}
+.qe-sheet{transition:transform .25s cubic-bezier(.32,1,.46,1);}
+
+/* ── QUICK EDIT OVERLAY ── */
+.qe-ov{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.75);display:none;align-items:flex-end;justify-content:center;}
+.qe-ov.open{display:flex;}
+.qe-sheet{background:var(--s1);border-radius:22px 22px 0 0;border:0.5px solid var(--brd2);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding-bottom:36px;animation:sUp .28s cubic-bezier(.32,1,.46,1);}
+@keyframes sUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.qe-handle{width:32px;height:4px;background:var(--s3);border-radius:99px;margin:12px auto 4px;}
+.qe-hdr{display:flex;justify-content:space-between;align-items:center;padding:10px 18px 12px;}
+.qe-title{font-size:17px;font-weight:700;color:var(--txt);}
+.qe-save{padding:9px 20px;border-radius:99px;border:none;background:var(--acc);color:#080808;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.qe-cancel{font-size:13px;color:var(--t3);background:none;border:none;cursor:pointer;padding:9px 12px;}
+.qef{padding:6px 18px;}
+.qef-l{font-size:11px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;font-weight:700;}
+.qe-inp{width:100%;background:var(--s2);border:0.5px solid var(--brd2);border-radius:var(--rs);color:var(--txt);font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:500;padding:12px 14px;outline:none;-webkit-appearance:none;}
+.qe-inp:focus{border-color:var(--acc);}
+.cpick{display:flex;gap:8px;overflow-x:auto;padding:4px 18px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.cpick::-webkit-scrollbar{display:none;}
+.chip{flex-shrink:0;padding:10px 18px;border-radius:99px;border:0.5px solid var(--brd2);background:var(--s2);color:var(--t2);font-size:15px;font-weight:500;cursor:pointer;transition:all .15s;}
+.chip:active{transform:scale(.93);}
+.chip.sel{background:var(--acc);border-color:var(--acc);color:#080808;font-weight:700;}
+.direct-row{display:flex;align-items:center;gap:8px;padding:0 18px 6px;}
+.direct-lbl{font-size:12px;color:var(--t3);white-space:nowrap;}
+.direct-inp{width:90px;background:var(--s2);border:0.5px solid var(--brd2);border-radius:var(--rs);color:var(--txt);font-family:'Bebas Neue',sans-serif;font-size:26px;text-align:center;padding:9px;outline:none;-webkit-appearance:none;}
+.direct-inp:focus{border-color:var(--acc);}
+.direct-unit{font-size:13px;color:var(--t3);}
+.adj-row{display:flex;align-items:center;gap:14px;padding:0 18px;}
+.adj-lbl{font-size:13px;color:var(--t3);}
+.adj-btn{width:40px;height:40px;border-radius:50%;border:0.5px solid var(--brd2);background:var(--s2);color:var(--txt);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+.adj-btn:active{transform:scale(.9);}
+.adj-val{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--txt);min-width:36px;text-align:center;}
+.qdiv{margin:10px 18px;height:0.5px;background:var(--brd);}
+.ru-row{display:flex;gap:8px;padding:0 18px 8px;}
+.ru-btn{padding:8px 14px;border-radius:99px;border:0.5px solid var(--brd2);background:var(--s2);color:var(--t3);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;}
+.ru-btn.on{background:var(--acd);border-color:rgba(200,241,53,.4);color:var(--acc);}
+
+/* ALARM */
+.af{position:fixed;inset:0;z-index:999;pointer-events:none;opacity:0;}
+.af.bm{animation:fa .45s ease-in-out 4;}
+@keyframes fa{0%{opacity:0}40%{opacity:.6;background:#c8f135}60%{opacity:.6;background:#c8f135}100%{opacity:0}}
+.ap{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.88);}
+.ap.show{display:flex;}
+.ab{background:var(--s1);border:1.5px solid var(--acc);border-radius:20px;padding:28px 24px;text-align:center;max-width:260px;width:90%;animation:pi .3s cubic-bezier(.32,1,.46,1);}
+@keyframes pi{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.ab-tt{font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--acc);margin-bottom:5px;}
+.ab-st{font-size:13px;color:var(--t2);margin-bottom:18px;}
+.ab-ok{width:100%;padding:13px;border-radius:var(--rs);border:none;background:var(--acc);color:#080808;font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+
+/* CONFIRM */
+.cov{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;}
+.cov.open{display:flex;}
+.cbox{background:var(--s1);border:0.5px solid var(--brd2);border-radius:20px;padding:24px 22px;max-width:280px;width:90%;text-align:center;}
+.ctt{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:8px;}
+.csub{font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6;}
+.cbtns{display:flex;gap:10px;}
+.c-no{flex:1;padding:12px;border-radius:var(--rs);border:0.5px solid var(--brd2);background:var(--s2);color:var(--t2);font-family:'Noto Sans KR',sans-serif;font-size:13px;cursor:pointer;}
+.c-yes{flex:1;padding:12px;border-radius:var(--rs);border:none;background:var(--acc);color:#080808;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="af" id="af"></div>
+<div class="ap" id="ap"><div class="ab"><div class="ab-tt">휴식 완료!</div><div class="ab-st" id="aSub">다음 세트를 시작하세요</div><button class="ab-ok" onclick="closeAlarm()">확인 — 시작!</button></div></div>
+<div class="cov" id="cov"><div class="cbox"><div class="ctt" id="ctt"></div><div class="csub" id="csub"></div><div class="cbtns"><button class="c-no" onclick="closeConfirm()">취소</button><button class="c-yes" id="cyes">확인</button></div></div></div>
+
+<!-- ══ 운동 PAGE ══ -->
+<div class="page active" id="page-workout">
+  <div class="app-hdr">
+    <div class="hdr-row">
+      <div class="logo-c"><div class="logo-p">PLAN</div><div class="logo-j">J</div></div>
+      <div class="hdr-info"><div class="hdr-sub">Personal Training</div><div class="hdr-name" id="mainName"><em>이형철</em> 회원님 전용 루틴</div></div>
+      <button class="iBtn" onclick="openFEdit()" title="루틴 편집">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="dt-card card" style="margin:12px 20px 0;">
+    <div><div class="date-big" id="dB">-</div><div class="day-kor" id="dK">-</div></div>
+    <div class="time-c" id="clk">--:--:--</div>
+  </div>
+
+  <!-- 1RM SECTION ON MAIN -->
+  <div class="orm-card">
+    <div class="orm-toggle" id="ormToggle" onclick="toggleOrm()">
+      <div>
+        <div class="orm-toggle-l">⚡ 자동 무게 설정</div>
+        <div class="orm-toggle-sub">5RM 입력 → 모든 운동 무게 자동 계산</div>
+      </div>
+      <div class="orm-arrow" id="ormArrow">▾</div>
+    </div>
+    <div class="orm-body" id="ormBody">
+      <div class="orm-3">
+        <div class="orm-iw"><div class="orm-il">벤치프레스<br>5RM</div><input class="orm-i" id="oBench" type="number" placeholder="0"><div class="orm-unit">kg</div></div>
+        <div class="orm-iw"><div class="orm-il">스쿼트<br>5RM</div><input class="orm-i" id="oSquat" type="number" placeholder="0"><div class="orm-unit">kg</div></div>
+        <div class="orm-iw"><div class="orm-il">데드리프트<br>5RM</div><input class="orm-i" id="oDead" type="number" placeholder="0"><div class="orm-unit">kg</div></div>
+      </div>
+      <button class="orm-btn" onclick="calcORM()">권장 무게 계산하기</button>
+      <div class="orm-res" id="ormRes">
+        <div class="orm-res-tt">계산된 권장 무게</div>
+        <div class="orm-chips" id="ormChips"></div>
+        <button class="orm-apply" onclick="applyORM()">모든 루틴에 자동 적용하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tmr-card card">
+    <div class="tmr-top"><div class="tmr-lbl">휴식 타이머</div><div class="tmr-st" id="tSt">대기중</div></div>
+    <div class="tmr-n" id="tN">00:00</div>
+    <div class="tmr-bb"><div class="tmr-bf" id="tB" style="width:100%"></div></div>
+    <div class="tbtns">
+      <button class="tb p" id="b70" onclick="startTimer(70)">1분 10초<br><span style="font-size:9px;opacity:.5">짧은 휴식</span></button>
+      <button class="tb p" id="b130" onclick="startTimer(130)">2분 10초<br><span style="font-size:9px;opacity:.5">긴 휴식</span></button>
+      <button class="tb stp" onclick="stopTimer()">중지<br><span style="font-size:9px;opacity:.5">리셋</span></button>
+    </div>
+  </div>
+
+  <div class="prog-row">
+    <div class="ring-w">
+      <svg width="70" height="70" viewBox="0 0 80 80">
+        <circle class="rbg" cx="40" cy="40" r="34"/>
+        <circle class="rf" id="rF" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/>
+      </svg>
+      <div class="rlb"><div class="rpct" id="rPct">0%</div><div class="rsub">완료</div></div>
+    </div>
+    <div><div class="pn"><span id="dS">0</span><span> / </span><span id="tS">0</span></div><div class="pd">세트 완료</div></div>
+  </div>
+
+  <div class="split-tabs" id="splitTabs"></div>
+  <div id="exList"></div>
+  <div class="done-bn" id="doneBn"><div class="done-tt">🎉 오늘도 완료!</div><div class="done-st" id="doneStTxt">수고하셨습니다!</div></div>
+  <button class="rst-btn" onclick="resetDay()">오늘 기록 초기화</button>
+</div>
+
+<!-- ══ 기록 PAGE ══ -->
+<div class="page" id="page-stats">
+  <div class="app-hdr" style="padding-bottom:16px;">
+    <div class="hdr-row"><div class="logo-c"><div class="logo-p">PLAN</div><div class="logo-j">J</div></div><div class="hdr-info"><div class="hdr-sub">Progress</div><div class="hdr-name" style="font-size:18px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em;">운동 기록</div></div></div>
+  </div>
+  <div class="stat-2g" id="statsCards"></div>
+  <div class="sec-t" style="margin-top:16px;">이번 주</div>
+  <div class="week-row" id="weekRow"></div>
+  <div class="sec-t" style="margin-top:16px;">오늘 부위별 진행</div>
+  <div id="bpartRows"></div>
+</div>
+
+<!-- ══ 설정 PAGE ══ -->
+<div class="page" id="page-settings">
+  <div class="app-hdr" style="padding-bottom:16px;">
+    <div class="hdr-row"><div class="logo-c"><div class="logo-p">PLAN</div><div class="logo-j">J</div></div><div class="hdr-info"><div class="hdr-sub">Settings</div><div class="hdr-name" style="font-size:18px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em;">설정</div></div></div>
+  </div>
+
+  <div class="sec-t">분할 설정</div>
+  <div class="setting-block">
+    <div class="srow" style="flex-direction:column;align-items:flex-start;gap:10px;">
+      <div><div class="srow-l">운동 분할 선택</div><div class="srow-sub">변경 시 체크 기록이 초기화돼요</div></div>
+      <div class="split-opts" id="splitOpts">
+        <button class="sopt" onclick="setSplit(2)">2분할</button>
+        <button class="sopt" onclick="setSplit(3)">3분할</button>
+        <button class="sopt" onclick="setSplit(4)">4분할</button>
+        <button class="sopt" onclick="setSplit(5)">5분할</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-t">데이터</div>
+  <div class="setting-block">
+    <div class="srow" style="cursor:pointer;" onclick="confirmReset()">
+      <div><div class="srow-l" style="color:#f87171;">전체 초기화</div><div class="srow-sub">모든 기록과 루틴 설정이 삭제돼요</div></div>
+      <div style="color:#f87171;">›</div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="bnav"><div class="bnav-i">
+  <button class="nb on" id="nb-workout" onclick="showPage('workout')"><div class="nb-ic">🏋️</div><div class="nb-lb">운동</div></button>
+  <button class="nb" id="nb-stats" onclick="showPage('stats')"><div class="nb-ic">📊</div><div class="nb-lb">기록</div></button>
+  <button class="nb" id="nb-settings" onclick="showPage('settings')"><div class="nb-ic">⚙️</div><div class="nb-lb">설정</div></button>
+</div></nav>
+
+<!-- ══ FULL EDIT OVERLAY ══ -->
+<div class="fe-ov" id="feOv">
+  <div class="fe-inner">
+    <div class="fe-bar">
+      <button class="fe-cancel" onclick="closeFEdit()">취소</button>
+      <div class="fe-title">루틴 편집</div>
+      <button class="fe-save" onclick="saveFEdit()">저장 완료</button>
+    </div>
+    <div class="fe-name-wrap">
+      <div class="fe-name-lbl">회원 이름</div>
+      <input class="fe-name-inp" id="feNameInp" type="text" placeholder="회원 이름">
+    </div>
+    <div class="fe-day-tabs" id="feDayTabs"></div>
+    <div id="feContent"></div>
+  </div>
+</div>
+
+<!-- ══ QUICK EDIT OVERLAY ══ -->
+<div class="qe-ov" id="qeOv" onclick="qeOvClick(event)">
+  <div class="qe-sheet" id="qeSheet">
+    <div class="qe-handle"></div>
+    <div class="qe-hdr">
+      <button class="qe-cancel" onclick="closeQEdit()">취소</button>
+      <div class="qe-title">운동 수정</div>
+      <button class="qe-save" onclick="saveQEdit()">저장</button>
+    </div>
+    <div class="qef"><div class="qef-l">운동 이름</div><input class="qe-inp" id="qeN" type="text"></div>
+    <div class="qdiv"></div>
+    <div class="qef"><div class="qef-l">무게</div>
+      <div class="cpick" id="wChips"></div>
+      <div class="direct-row"><div class="direct-lbl">직접 입력</div><input class="direct-inp" id="wDirect" type="number" step="0.5" min="0" oninput="onDW(this.value)"><div class="direct-unit">kg</div></div>
+    </div>
+    <div class="qdiv"></div>
+    <div class="qef"><div class="qef-l">횟수 / 시간</div>
+      <div class="ru-row"><button class="ru-btn on" id="ruR" onclick="setRU('회')">횟수 (회)</button><button class="ru-btn" id="ruS" onclick="setRU('초')">시간 (초)</button></div>
+      <div class="cpick" id="rChips"></div>
+      <div class="direct-row"><div class="direct-lbl">직접 입력</div><input class="direct-inp" id="rDirect" type="number" min="1" oninput="onDR(this.value)"><div class="direct-unit" id="rDUnit">회</div></div>
+    </div>
+    <div class="qdiv"></div>
+    <div class="qef"><div class="qef-l">세트 수</div>
+      <div class="adj-row"><div class="adj-lbl">세트</div><button class="adj-btn" onclick="adjS(-1)">−</button><div class="adj-val" id="qeSets">3</div><button class="adj-btn" onclick="adjS(1)">+</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══ MUSCLE SVG ══ */
+const R='rgba(220,38,38,0.85)',R2='rgba(220,38,38,0.42)';
+const MH={chest:`<ellipse cx="62" cy="92" rx="22" ry="19" fill="${R}"/><ellipse cx="98" cy="92" rx="22" ry="19" fill="${R}"/>`,upper_chest:`<ellipse cx="62" cy="74" rx="20" ry="15" fill="${R}"/><ellipse cx="98" cy="74" rx="20" ry="15" fill="${R}"/>`,lower_chest:`<ellipse cx="62" cy="110" rx="21" ry="13" fill="${R}"/><ellipse cx="98" cy="110" rx="21" ry="13" fill="${R}"/>`,front_delt:`<ellipse cx="34" cy="66" rx="17" ry="13" fill="${R}"/><ellipse cx="126" cy="66" rx="17" ry="13" fill="${R}"/>`,side_delt:`<ellipse cx="24" cy="72" rx="15" ry="12" fill="${R}"/><ellipse cx="136" cy="72" rx="15" ry="12" fill="${R}"/>`,biceps:`<ellipse cx="34" cy="99" rx="10" ry="21" fill="${R}"/><ellipse cx="126" cy="99" rx="10" ry="21" fill="${R}"/>`,abs:`<rect x="58" y="122" width="18" height="12" rx="4" fill="${R}"/><rect x="84" y="122" width="18" height="12" rx="4" fill="${R}"/><rect x="58" y="137" width="18" height="12" rx="4" fill="${R}"/><rect x="84" y="137" width="18" height="12" rx="4" fill="${R}"/><rect x="58" y="152" width="18" height="12" rx="4" fill="${R}"/><rect x="84" y="152" width="18" height="12" rx="4" fill="${R}"/>`,core:`<rect x="48" y="117" width="64" height="52" rx="6" fill="${R2}"/><ellipse cx="34" cy="66" rx="14" ry="11" fill="${R2}"/><ellipse cx="126" cy="66" rx="14" ry="11" fill="${R2}"/>`,quads:`<ellipse cx="47" cy="235" rx="18" ry="36" fill="${R}"/><ellipse cx="113" cy="235" rx="18" ry="36" fill="${R}"/>`,quads_glutes:`<ellipse cx="47" cy="235" rx="18" ry="36" fill="${R}"/><ellipse cx="113" cy="235" rx="18" ry="36" fill="${R}"/><ellipse cx="58" cy="192" rx="24" ry="14" fill="${R2}"/><ellipse cx="102" cy="192" rx="24" ry="14" fill="${R2}"/>`,lats:`<path d="M46,60 C36,60 30,68 29,76 L28,160 L54,164 L54,60Z" fill="${R}"/><path d="M114,60 C124,60 130,68 131,76 L132,160 L106,164 L106,60Z" fill="${R}"/>`,lats_mid:`<path d="M46,60 C36,60 30,68 29,76 L28,160 L54,164 L54,60Z" fill="${R}"/><path d="M114,60 C124,60 130,68 131,76 L132,160 L106,164 L106,60Z" fill="${R}"/><ellipse cx="80" cy="105" rx="28" ry="24" fill="${R2}"/>`,rear_delt:`<ellipse cx="34" cy="66" rx="17" ry="13" fill="${R}"/><ellipse cx="126" cy="66" rx="17" ry="13" fill="${R}"/><ellipse cx="80" cy="92" rx="30" ry="21" fill="${R2}"/>`,triceps:`<ellipse cx="34" cy="100" rx="10" ry="21" fill="${R}"/><ellipse cx="126" cy="100" rx="10" ry="21" fill="${R}"/>`,hamstrings:`<ellipse cx="46" cy="235" rx="17" ry="35" fill="${R}"/><ellipse cx="114" cy="235" rx="17" ry="35" fill="${R}"/>`,glutes:`<ellipse cx="58" cy="190" rx="28" ry="20" fill="${R}"/><ellipse cx="102" cy="190" rx="28" ry="20" fill="${R}"/>`,calves:`<ellipse cx="40" cy="287" rx="14" ry="22" fill="${R}"/><ellipse cx="120" cy="287" rx="14" ry="22" fill="${R}"/>`};
+function bodyPath(bk){const F=`fill="#1e1e1e" stroke="#3a3a3a" stroke-width="1.8" stroke-linejoin="round"`,S=`fill="#252525" stroke="#404040" stroke-width="1.4" stroke-linejoin="round"`,L=`stroke="#2e2e2e" stroke-width="1.2" fill="none"`,ml=bk?`<path ${L} d="M58,66 C55,84 48,104 50,118"/><path ${L} d="M102,66 C105,84 112,104 110,118"/><line ${L} x1="80" y1="58" x2="80" y2="170"/>`:`<line ${L} x1="80" y1="58" x2="80" y2="118"/><line ${L} x1="50" y1="118" x2="110" y2="118"/><line ${L} x1="50" y1="133" x2="110" y2="133"/><line ${L} x1="50" y1="148" x2="110" y2="148"/><circle cx="72" cy="20" r="3" fill="#2a2a2a"/><circle cx="88" cy="20" r="3" fill="#2a2a2a"/><path ${L} d="M74,29 Q80,34 86,29"/>`;return`<ellipse ${F} cx="80" cy="22" rx="20" ry="22"/><path ${F} d="M74,42 Q70,54 70,58 L90,58 Q90,54 86,42 Z"/><path ${F} d="M44,58 C35,58 28,66 28,74 L28,162 C28,170 34,172 44,172 L116,172 C126,172 132,170 132,162 L132,74 C132,66 125,58 116,58 Z"/>${ml}<path ${S} d="M40,62 L25,124 L42,130 L52,64 Z"/><path ${S} d="M120,62 L135,124 L118,130 L108,64 Z"/><path ${S} d="M26,122 L16,178 L34,180 L44,126 Z"/><path ${S} d="M134,122 L144,178 L126,180 L116,126 Z"/><ellipse ${F} cx="20" cy="182" rx="9" ry="6"/><ellipse ${F} cx="140" cy="182" rx="9" ry="6"/>${bk?`<path ${F} d="M44,172 L34,205 L126,205 L116,172 Z"/><path ${L} d="M55,188 Q80,200 105,188"/><path ${S} d="M34,203 L24,272 L56,274 L65,203 Z"/><path ${S} d="M126,203 L136,272 L104,274 L95,203 Z"/><path ${S} d="M25,270 L20,312 L52,313 L57,272 Z"/><path ${S} d="M135,270 L140,312 L108,313 L103,272 Z"/>`:`<path ${F} d="M44,172 L36,202 L124,202 L116,172 Z"/><path ${S} d="M36,200 L26,270 L56,272 L65,200 Z"/><path ${S} d="M124,200 L134,270 L104,272 L95,200 Z"/><path ${S} d="M27,268 L22,312 L52,313 L57,270 Z"/><path ${S} d="M133,268 L138,312 L108,313 L103,270 Z"/>`}<ellipse ${F} cx="38" cy="314" rx="16" ry="5"/><ellipse ${F} cx="122" cy="314" rx="16" ry="5"/>`;}
+function thumb(m,bk,crop){const h=MH[m]||'',vb=crop==='dn'?'20 168 120 152':'2 0 156 208';return`<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" style="border-radius:50%;"><circle cx="80" cy="${crop==='dn'?244:104}" r="${crop==='dn'?95:130}" fill="#141414"/>${bodyPath(bk)}${h}</svg>`;}
+
+/* ══ DEFAULT SPLITS ══ */
+const DEF={
+  2:{days:[{label:'A일',sub:'상체',sections:[{name:'가슴',exercises:[{name:'플랫 덤벨 벤치프레스',w:22.5,rep:10,sets:4,ru:'회',m:'chest',vf:'front',crop:'up'},{name:'인클라인 머신 체스트프레스',w:45,rep:10,sets:3,ru:'회',m:'upper_chest',vf:'front',crop:'up'},{name:'펙덱 플라이',w:40,rep:12,sets:3,ru:'회',m:'chest',vf:'front',crop:'up'}]},{name:'등',exercises:[{name:'랫풀다운',w:55,rep:10,sets:4,ru:'회',m:'lats',vf:'back',crop:'up'},{name:'시티드 케이블 로우',w:55,rep:10,sets:3,ru:'회',m:'lats_mid',vf:'back',crop:'up'}]},{name:'어깨',exercises:[{name:'덤벨 숄더프레스',w:15,rep:10,sets:4,ru:'회',m:'front_delt',vf:'front',crop:'up'},{name:'케이블 사이드 레터럴 레이즈',w:7.5,rep:15,sets:3,ru:'회',m:'side_delt',vf:'front',crop:'up'}]},{name:'팔',exercises:[{name:'EZ바 바이셉스 컬',w:25,rep:10,sets:3,ru:'회',m:'biceps',vf:'front',crop:'up'},{name:'케이블 트라이셉스 푸시다운',w:22.5,rep:12,sets:3,ru:'회',m:'triceps',vf:'back',crop:'up'}]}]},{label:'B일',sub:'하체',sections:[{name:'하체',exercises:[{name:'바벨 스쿼트',w:57.5,rep:10,sets:4,ru:'회',m:'quads_glutes',vf:'front',crop:'dn'},{name:'레그프레스',w:100,rep:12,sets:4,ru:'회',m:'quads',vf:'front',crop:'dn'},{name:'레그 컬',w:37.5,rep:12,sets:3,ru:'회',m:'hamstrings',vf:'back',crop:'dn'},{name:'레그 익스텐션',w:37.5,rep:12,sets:3,ru:'회',m:'quads',vf:'front',crop:'dn'}]},{name:'복근',exercises:[{name:'케이블 크런치',w:25,rep:15,sets:3,ru:'회',m:'abs',vf:'front',crop:'up'},{name:'플랭크',w:0,rep:60,sets:3,ru:'초',m:'core',vf:'front',crop:'up'}]}]}]},
+  3:{days:[{label:'A일',sub:'가슴·삼두·복근',sections:[{name:'가슴',exercises:[{name:'플랫 덤벨 벤치프레스',w:22.5,rep:10,sets:4,ru:'회',m:'chest',vf:'front',crop:'up'},{name:'인클라인 머신 체스트프레스',w:45,rep:10,sets:3,ru:'회',m:'upper_chest',vf:'front',crop:'up'},{name:'펙덱 플라이',w:40,rep:12,sets:3,ru:'회',m:'chest',vf:'front',crop:'up'},{name:'케이블 크로스오버',w:12.5,rep:12,sets:3,ru:'회',m:'lower_chest',vf:'front',crop:'up'}]},{name:'삼두',exercises:[{name:'케이블 푸시다운 (로프)',w:22.5,rep:12,sets:4,ru:'회',m:'triceps',vf:'back',crop:'up'},{name:'케이블 오버헤드 삼두 익스텐션',w:17.5,rep:12,sets:3,ru:'회',m:'triceps',vf:'back',crop:'up'}]},{name:'복근',exercises:[{name:'케이블 크런치',w:25,rep:15,sets:3,ru:'회',m:'abs',vf:'front',crop:'up'},{name:'플랭크',w:0,rep:60,sets:3,ru:'초',m:'core',vf:'front',crop:'up'}]}]},{label:'B일',sub:'등·이두',sections:[{name:'등',exercises:[{name:'시티드 케이블 로우',w:55,rep:10,sets:4,ru:'회',m:'lats_mid',vf:'back',crop:'up'},{name:'랫풀다운 와이드그립',w:55,rep:10,sets:4,ru:'회',m:'lats',vf:'back',crop:'up'},{name:'원암 덤벨 로우',w:22.5,rep:10,sets:3,ru:'회',m:'lats',vf:'back',crop:'up'},{name:'케이블 페이스풀',w:12.5,rep:15,sets:3,ru:'회',m:'rear_delt',vf:'back',crop:'up'}]},{name:'이두',exercises:[{name:'EZ바 바이셉스 컬',w:25,rep:10,sets:4,ru:'회',m:'biceps',vf:'front',crop:'up'},{name:'인클라인 덤벨 컬',w:12.5,rep:12,sets:3,ru:'회',m:'biceps',vf:'front',crop:'up'},{name:'해머 컬',w:12.5,rep:12,sets:3,ru:'회',m:'biceps',vf:'front',crop:'up'}]}]},{label:'C일',sub:'하체·어깨',sections:[{name:'하체',exercises:[{name:'레그프레스',w:100,rep:12,sets:4,ru:'회',m:'quads',vf:'front',crop:'dn'},{name:'바벨 스쿼트',w:57.5,rep:10,sets:4,ru:'회',m:'quads_glutes',vf:'front',crop:'dn'},{name:'레그 컬',w:37.5,rep:12,sets:3,ru:'회',m:'hamstrings',vf:'back',crop:'dn'},{name:'레그 익스텐션',w:37.5,rep:12,sets:3,ru:'회',m:'quads',vf:'front',crop:'dn'},{name:'힙 쓰러스트 (바벨)',w:40,rep:12,sets:3,ru:'회',m:'glutes',vf:'back',crop:'dn'},{name:'카프레이즈 머신',w:60,rep:15,sets:3,ru:'회',m:'calves',vf:'back',crop:'dn'}]},{name:'어깨',exercises:[{name:'덤벨 숄더프레스',w:15,rep:10,sets:4,ru:'회',m:'front_delt',vf:'front',crop:'up'},{name:'케이블 사이드 레터럴 레이즈',w:7.5,rep:15,sets:3,ru:'회',m:'side_delt',vf:'front',crop:'up'},{name:'리어 델트 머신 플라이',w:22.5,rep:15,sets:3,ru:'회',m:'rear_delt',vf:'back',crop:'up'}]}]}]},
+  4:{days:[{label:'A일',sub:'가슴·삼두',sections:[{name:'가슴',exercises:[{name:'플랫 덤벨 벤치프레스',w:22.5,rep:10,sets:4,ru:'회',m:'chest',vf:'front',crop:'up'},{name:'인클라인 머신 체스트프레스',w:45,rep:10,sets:4,ru:'회',m:'upper_chest',vf:'front',crop:'up'},{name:'펙덱 플라이',w:40,rep:12,sets:3,ru:'회',m:'chest',vf:'front',crop:'up'},{name:'케이블 크로스오버',w:12.5,rep:12,sets:3,ru:'회',m:'lower_chest',vf:'front',crop:'up'}]},{name:'삼두',exercises:[{name:'케이블 푸시다운',w:22.5,rep:12,sets:4,ru:'회',m:'triceps',vf:'back',crop:'up'},{name:'오버헤드 삼두 익스텐션',w:17.5,rep:12,sets:3,ru:'회',m:'triceps',vf:'back',crop:'up'},{name:'케이블 킥백',w:10,rep:15,sets:3,ru:'회',m:'triceps',vf:'back',crop:'up'}]}]},{label:'B일',sub:'등·이두',sections:[{name:'등',exercises:[{name:'시티드 케이블 로우',w:55,rep:10,sets:4,ru:'회',m:'lats_mid',vf:'back',crop:'up'},{name:'랫풀다운 와이드그립',w:55,rep:10,sets:4,ru:'회',m:'lats',vf:'back',crop:'up'},{name:'원암 덤벨 로우',w:22.5,rep:10,sets:4,ru:'회',m:'lats',vf:'back',crop:'up'},{name:'케이블 페이스풀',w:12.5,rep:15,sets:3,ru:'회',m:'rear_delt',vf:'back',crop:'up'}]},{name:'이두',exercises:[{name:'EZ바 바이셉스 컬',w:25,rep:10,sets:4,ru:'회',m:'biceps',vf:'front',crop:'up'},{name:'인클라인 덤벨 컬',w:12.5,rep:12,sets:3,ru:'회',m:'biceps',vf:'front',crop:'up'},{name:'해머 컬',w:12.5,rep:12,sets:3,ru:'회',m:'biceps',vf:'front',crop:'up'}]}]},{label:'C일',sub:'하체',sections:[{name:'하체',exercises:[{name:'바벨 스쿼트',w:57.5,rep:10,sets:5,ru:'회',m:'quads_glutes',vf:'front',crop:'dn'},{name:'레그프레스',w:100,rep:12,sets:4,ru:'회',m:'quads',vf:'front',crop:'dn'},{name:'레그 컬',w:37.5,rep:12,sets:4,ru:'회',m:'hamstrings',vf:'back',crop:'dn'},{name:'레그 익스텐션',w:37.5,rep:12,sets:3,ru:'회',m:'quads',vf:'front',crop:'dn'},{name:'힙 쓰러스트',w:40,rep:12,sets:3,ru:'회',m:'glutes',vf:'back',crop:'dn'},{name:'카프레이즈',w:60,rep:15,sets:4,ru:'회',m:'calves',vf:'back',crop:'dn'}]},{name:'복근',exercises:[{name:'케이블 크런치',w:25,rep:15,sets:3,ru:'회',m:'abs',vf:'front',crop:'up'},{name:'플랭크',w:0,rep:60,sets:3,ru:'초',m:'core',vf:'front',crop:'up'}]}]},{label:'D일',sub:'어깨·복근',sections:[{name:'어깨',exercises:[{name:'덤벨 숄더프레스',w:15,rep:10,sets:5,ru:'회',m:'front_delt',vf:'front',crop:'up'},{name:'케이블 사이드 레터럴 레이즈',w:7.5,rep:15,sets:4,ru:'회',m:'side_delt',vf:'front',crop:'up'},{name:'리어 델트 머신 플라이',w:22.5,rep:15,sets:4,ru:'회',m:'rear_delt',vf:'back',crop:'up'},{name:'업라이트 로우',w:30,rep:12,sets:3,ru:'회',m:'front_delt',vf:'front',crop:'up'}]},{name:'복근',exercises:[{name:'케이블 크런치',w:25,rep:15,sets:3,ru:'회',m:'abs',vf:'front',crop:'up'},{name:'레그레이즈',w:0,rep:15,sets:3,ru:'회',m:'abs',vf:'front',crop:'up'}]}]}]},
+  5:{days:[{label:'A일',sub:'가슴',sections:[{name:'가슴',exercises:[{name:'플랫 덤벨 벤치프레스',w:22.5,rep:10,sets:5,ru:'회',m:'chest',vf:'front',crop:'up'},{name:'인클라인 머신 체스트프레스',w:45,rep:10,sets:4,ru:'회',m:'upper_chest',vf:'front',crop:'up'},{name:'펙덱 플라이',w:40,rep:12,sets:4,ru:'회',m:'chest',vf:'front',crop:'up'},{name:'케이블 크로스오버',w:12.5,rep:12,sets:3,ru:'회',m:'lower_chest',vf:'front',crop:'up'}]}]},{label:'B일',sub:'등',sections:[{name:'등',exercises:[{name:'시티드 케이블 로우',w:55,rep:10,sets:5,ru:'회',m:'lats_mid',vf:'back',crop:'up'},{name:'랫풀다운 와이드그립',w:55,rep:10,sets:4,ru:'회',m:'lats',vf:'back',crop:'up'},{name:'원암 덤벨 로우',w:22.5,rep:10,sets:4,ru:'회',m:'lats',vf:'back',crop:'up'},{name:'케이블 페이스풀',w:12.5,rep:15,sets:3,ru:'회',m:'rear_delt',vf:'back',crop:'up'}]}]},{label:'C일',sub:'어깨',sections:[{name:'어깨',exercises:[{name:'덤벨 숄더프레스',w:15,rep:10,sets:5,ru:'회',m:'front_delt',vf:'front',crop:'up'},{name:'케이블 사이드 레터럴 레이즈',w:7.5,rep:15,sets:4,ru:'회',m:'side_delt',vf:'front',crop:'up'},{name:'리어 델트 머신 플라이',w:22.5,rep:15,sets:4,ru:'회',m:'rear_delt',vf:'back',crop:'up'},{name:'페이스풀',w:12.5,rep:15,sets:3,ru:'회',m:'rear_delt',vf:'back',crop:'up'}]}]},{label:'D일',sub:'팔',sections:[{name:'이두',exercises:[{name:'EZ바 바이셉스 컬',w:25,rep:10,sets:4,ru:'회',m:'biceps',vf:'front',crop:'up'},{name:'인클라인 덤벨 컬',w:12.5,rep:12,sets:3,ru:'회',m:'biceps',vf:'front',crop:'up'},{name:'해머 컬',w:12.5,rep:12,sets:3,ru:'회',m:'biceps',vf:'front',crop:'up'}]},{name:'삼두',exercises:[{name:'케이블 푸시다운',w:22.5,rep:12,sets:4,ru:'회',m:'triceps',vf:'back',crop:'up'},{name:'오버헤드 삼두 익스텐션',w:17.5,rep:12,sets:3,ru:'회',m:'triceps',vf:'back',crop:'up'},{name:'케이블 킥백',w:10,rep:15,sets:3,ru:'회',m:'triceps',vf:'back',crop:'up'}]}]},{label:'E일',sub:'하체',sections:[{name:'하체',exercises:[{name:'바벨 스쿼트',w:57.5,rep:10,sets:5,ru:'회',m:'quads_glutes',vf:'front',crop:'dn'},{name:'레그프레스',w:100,rep:12,sets:4,ru:'회',m:'quads',vf:'front',crop:'dn'},{name:'레그 컬',w:37.5,rep:12,sets:4,ru:'회',m:'hamstrings',vf:'back',crop:'dn'},{name:'레그 익스텐션',w:37.5,rep:12,sets:3,ru:'회',m:'quads',vf:'front',crop:'dn'},{name:'힙 쓰러스트',w:40,rep:12,sets:3,ru:'회',m:'glutes',vf:'back',crop:'dn'},{name:'카프레이즈',w:60,rep:15,sets:4,ru:'회',m:'calves',vf:'back',crop:'dn'}]},{name:'복근',exercises:[{name:'케이블 크런치',w:25,rep:15,sets:3,ru:'회',m:'abs',vf:'front',crop:'up'},{name:'플랭크',w:0,rep:60,sets:3,ru:'초',m:'core',vf:'front',crop:'up'}]}]}]}
+};
+
+/* ══ STATE ══ */
+let D={memberName:'이형철',splitType:3,splits:{},checks:{},weekHistory:{}};
+let curDayIdx=0;
+const CIRC=2*Math.PI*34;
+
+function load(){
+  try{const s=localStorage.getItem('pt_v6');if(s)D=JSON.parse(s);}catch(e){}
+  [2,3,4,5].forEach(n=>{if(!D.splits[n])D.splits[n]=JSON.parse(JSON.stringify(DEF[n]));});
+  if(!D.checks)D.checks={};if(!D.weekHistory)D.weekHistory={};
+}
+function save(){try{localStorage.setItem('pt_v6',JSON.stringify(D));}catch(e){}}
+function getdays(){return D.splits[D.splitType].days;}
+function getday(i){return getdays()[i]||getdays()[0];}
+function k(di,si,ei,s){return`${di}_${si}_${ei}_${s}`;}
+function todayKey(){const n=new Date();return`${n.getFullYear()}-${n.getMonth()+1}-${n.getDate()}`;}
+function getCheck(di,si,ei,s){return!!(D.checks[todayKey()]&&D.checks[todayKey()][k(di,si,ei,s)]);}
+function metaStr(ex){return`${ex.w===0?'체중':`${ex.w}kg`} · ${ex.rep}${ex.ru||'회'}`;}
+
+/* ══ CHECKS ══ */
+function toggle(di,si,ei,s){
+  if(!D.checks[todayKey()])D.checks[todayKey()]={};
+  D.checks[todayKey()][k(di,si,ei,s)]=!D.checks[todayKey()][k(di,si,ei,s)];
+  D.weekHistory[todayKey()]=true;
+  save();render();
+}
+function selDay(i){curDayIdx=i;render();}
+function resetDay(){if(D.checks[todayKey()])D.checks[todayKey()]={};save();render();}
+
+function dayStats(di){
+  let t=0,d=0;
+  getday(di).sections.forEach((s,si)=>s.exercises.forEach((e,ei)=>{for(let ss=0;ss<e.sets;ss++){t++;if(getCheck(di,si,ei,ss))d++;}}));
+  return{t,d};
+}
+
+/* ══ RENDER MAIN ══ */
+function render(){
+  const name=D.memberName||'회원';
+  document.getElementById('mainName').innerHTML=`<em>${name}</em> 회원님 전용 루틴`;
+  document.getElementById('doneStTxt').textContent=`수고하셨습니다 ${name} 회원님!`;
+
+  // tabs
+  const tabsEl=document.getElementById('splitTabs');tabsEl.innerHTML='';
+  getdays().forEach((d,i)=>{
+    const st=dayStats(i),pct=st.t>0?Math.round(st.d/st.t*100):0;
+    const div=document.createElement('div');div.className='stab'+(i===curDayIdx?' on':'');
+    div.innerHTML=`<div class="stab-l">${d.label}</div><div class="stab-b">${(d.sub||'').replace(/·/g,'<br>')}</div><div class="stab-pg"><div class="stab-pgf" style="width:${pct}%"></div></div>`;
+    div.onclick=()=>selDay(i);tabsEl.appendChild(div);
+  });
+
+  // exercises
+  const list=document.getElementById('exList');list.innerHTML='';
+  let tot=0,don=0,num=0;
+  const day=getday(curDayIdx);
+  day.sections.forEach((sec,si)=>{
+    const sl=document.createElement('div');sl.className='sec-t';sl.textContent=sec.name;list.appendChild(sl);
+    sec.exercises.forEach((ex,ei)=>{
+      num++;let exDone=true,sH='';
+      for(let s=0;s<ex.sets;s++){tot++;const ck=getCheck(curDayIdx,si,ei,s);if(ck)don++;else exDone=false;
+        sH+=`<button class="sbt${ck?' ck':''}" onclick="toggle(${curDayIdx},${si},${ei},${s})"><span class="sn2">${s+1}</span><span class="sc2"><svg viewBox="0 0 20 20" fill="none" stroke="#080808" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,10 8,14 16,6"/></svg></span></button>`;
+      }
+      const card=document.createElement('div');card.className='ex-card'+(exDone?' done':'');
+      card.innerHTML=`<div class="ex-top"><div class="ex-num">${num}.</div><div class="ex-body"><div class="ex-name-txt">${ex.name}</div><div class="ex-meta-txt">${metaStr(ex)} · ${ex.sets}세트</div></div><div class="ex-right"><div class="ex-diagram">${thumb(ex.m||'chest',ex.vf==='back',ex.crop||'up')}</div><button class="ex-edit-btn" onclick="openQEdit(${curDayIdx},${si},${ei})">✏️</button><div class="done-chip">DONE</div></div></div><div class="sets-row">${sH}</div>`;
+      list.appendChild(card);
+    });
+    const dv=document.createElement('div');dv.className='hdiv';list.appendChild(dv);
+  });
+
+  const pct=tot>0?Math.round(don/tot*100):0;
+  document.getElementById('rF').style.strokeDashoffset=CIRC-(CIRC*pct/100);
+  document.getElementById('rPct').textContent=pct+'%';
+  document.getElementById('dS').textContent=don;document.getElementById('tS').textContent=tot;
+  document.getElementById('doneBn').classList.toggle('show',pct===100);
+}
+
+/* ══ 1RM TOGGLE ══ */
+function toggleOrm(){
+  const t=document.getElementById('ormToggle'),b=document.getElementById('ormBody'),a=document.getElementById('ormArrow');
+  const open=b.classList.toggle('open');t.classList.toggle('open',open);a.style.transform=open?'rotate(180deg)':'';
+}
+let ormData={};
+function r25(v){return Math.round(v/2.5)*2.5;}
+function calcORM(){
+  const b=parseFloat(document.getElementById('oBench').value)||0;
+  const sq=parseFloat(document.getElementById('oSquat').value)||0;
+  const dl=parseFloat(document.getElementById('oDead').value)||0;
+  if(!b&&!sq&&!dl){alert('5RM 무게를 입력해주세요!');return;}
+  const b1=r25(b*1.167),s1=r25(sq*1.167),d1=r25(dl*1.167);
+  ormData={chest:r25(b1*.70),shoulder:r25(b1*.35),bicep:r25(b1*.28),tricep:r25(b1*.30),row:r25(d1*.50),pulldown:r25(b1*.50),squat:r25(s1*.72),legpress:r25(s1*1.30),legcurl:r25(s1*.38),hipthrust:r25(d1*.65),calf:r25(s1*.65)};
+  const labels={chest:'가슴',shoulder:'어깨',bicep:'이두',tricep:'삼두',row:'로우류',pulldown:'풀다운',squat:'스쿼트',legpress:'레그프레스',legcurl:'레그 컬',hipthrust:'힙 쓰러스트',calf:'카프레이즈'};
+  document.getElementById('ormChips').innerHTML=Object.entries(ormData).filter(([,v])=>v>0).map(([k,v])=>`<div class="orm-chip">${labels[k]}: <b>${v}kg</b></div>`).join('');
+  document.getElementById('ormRes').classList.add('show');
+}
+function applyORM(){
+  if(!Object.keys(ormData).length)return;
+  const mmap={chest:'chest',upper_chest:'chest',lower_chest:'chest',front_delt:'shoulder',side_delt:'shoulder',rear_delt:'shoulder',biceps:'bicep',triceps:'tricep',lats:'pulldown',lats_mid:'row',quads:'squat',quads_glutes:'squat',hamstrings:'legcurl',glutes:'hipthrust',calves:'calf',abs:null,core:null};
+  [2,3,4,5].forEach(n=>{
+    D.splits[n].days.forEach(day=>day.sections.forEach(sec=>sec.exercises.forEach(ex=>{
+      const mk=mmap[ex.m];if(!mk||!ormData[mk])return;
+      if(ex.m==='quads'&&ex.name.includes('레그프레스'))ex.w=ormData.legpress;
+      else if(ex.m==='lats'&&ex.name.includes('풀다운'))ex.w=ormData.pulldown;
+      else ex.w=ormData[mk];
+    })));
+  });
+  save();render();document.getElementById('ormRes').classList.remove('show');
+  alert('✅ 모든 분할에 권장 무게가 적용됐어요!');
+}
+
+/* ══ QUICK EDIT ══ */
+const WTS=[0,2.5,5,7.5,10,12.5,15,17.5,20,22.5,25,27.5,30,32.5,35,37.5,40,42.5,45,47.5,50,52.5,55,57.5,60,65,70,75,80,85,90,95,100,110,120,130,140,150];
+const RH=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,25,30];
+const RS=[10,15,20,25,30,45,60,90,120];
+let qCtx={di:0,si:0,ei:0},qW=0,qR=10,qS=3,qRU='회';
+
+function buildChips(id,vals,sel,cb,suf){
+  const c=document.getElementById(id);c.innerHTML='';
+  vals.forEach(v=>{
+    const el=document.createElement('div');el.className='chip'+(v==sel?' sel':'');
+    el.textContent=v===0&&suf==='kg'?'체중':`${v}${suf}`;
+    el.onclick=()=>{cb(v);buildChips(id,vals,v,cb,suf);};
+    c.appendChild(el);
+  });
+  const s=c.querySelector('.sel');if(s)setTimeout(()=>s.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'}),50);
+}
+function onDW(v){qW=parseFloat(v)||0;buildChips('wChips',WTS,qW,(w)=>{qW=w;document.getElementById('wDirect').value=w;},'kg');}
+function onDR(v){qR=parseInt(v)||1;buildChips('rChips',qRU==='초'?RS:RH,qR,(r)=>{qR=r;document.getElementById('rDirect').value=r;},qRU);}
+function setRU(u){qRU=u;document.getElementById('ruR').classList.toggle('on',u==='회');document.getElementById('ruS').classList.toggle('on',u==='초');document.getElementById('rDUnit').textContent=u;buildChips('rChips',u==='초'?RS:RH,qR,(r)=>{qR=r;document.getElementById('rDirect').value=r;},u);}
+function adjS(d){qS=Math.max(1,Math.min(10,qS+d));document.getElementById('qeSets').textContent=qS;}
+
+function openQEdit(di,si,ei){
+  const ex=getday(di).sections[si].exercises[ei];
+  qCtx={di,si,ei};qW=ex.w||0;qR=ex.rep||10;qS=ex.sets||3;qRU=ex.ru||'회';
+  document.getElementById('qeN').value=ex.name;
+  document.getElementById('wDirect').value=qW;document.getElementById('rDirect').value=qR;
+  document.getElementById('qeSets').textContent=qS;document.getElementById('rDUnit').textContent=qRU;
+  document.getElementById('ruR').classList.toggle('on',qRU==='회');document.getElementById('ruS').classList.toggle('on',qRU==='초');
+  buildChips('wChips',WTS,qW,(w)=>{qW=w;document.getElementById('wDirect').value=w;},'kg');
+  buildChips('rChips',qRU==='초'?RS:RH,qR,(r)=>{qR=r;document.getElementById('rDirect').value=r;},qRU);
+  document.getElementById('qeOv').classList.add('open');document.body.style.overflow='hidden';
+}
+function closeQEdit(){
+  const sheet=document.getElementById('qeSheet');
+  sheet.style.transform='';
+  document.getElementById('qeOv').classList.remove('open');
+  document.body.style.overflow='';
+}
+function qeOvClick(e){if(e.target===document.getElementById('qeOv'))closeQEdit();}
+function saveQEdit(){
+  const{di,si,ei}=qCtx,ex=D.splits[D.splitType].days[di].sections[si].exercises[ei];
+  ex.name=document.getElementById('qeN').value.trim()||ex.name;
+  ex.w=qW;ex.rep=qR;ex.sets=qS;ex.ru=qRU;
+  save();render();closeQEdit();
+}
+
+/* ══ FULL EDIT ══ */
+let feBuf=null,feDay=0;
+function openFEdit(){
+  feBuf=JSON.parse(JSON.stringify(D.splits[D.splitType]));
+  feDay=0;
+  document.getElementById('feNameInp').value=D.memberName||'';
+  renderFeDayTabs();renderFeContent();
+  document.getElementById('feOv').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeFEdit(){feBuf=null;document.getElementById('feOv').classList.remove('open');document.body.style.overflow='';}
+function saveFEdit(){
+  D.memberName=document.getElementById('feNameInp').value.trim()||'회원';
+  D.splits[D.splitType]=feBuf;
+  save();render();closeFEdit();
+}
+function renderFeDayTabs(){
+  const el=document.getElementById('feDayTabs');el.innerHTML='';
+  feBuf.days.forEach((d,i)=>{
+    const btn=document.createElement('button');btn.className='fe-dtab'+(i===feDay?' on':'');
+    btn.textContent=d.label;btn.onclick=()=>{feDay=i;renderFeDayTabs();renderFeContent();};
+    el.appendChild(btn);
+  });
+}
+function renderFeContent(){
+  const day=feBuf.days[feDay];let html='';let gNum=0;
+  day.sections.forEach((sec,si)=>{
+    html+=`<div class="fe-divider"></div>
+    <div class="fe-sec-row"><span class="fe-sec-lbl">섹션명</span><input class="fe-sec-inp" value="${esc(sec.name)}" oninput="feBuf.days[${feDay}].sections[${si}].name=this.value"></div>`;
+    sec.exercises.forEach((ex,ei)=>{
+      gNum++;
+      const ru=ex.ru||'회';
+      html+=`<div class="fe-ex-card">
+        <div class="fe-ex-header">
+          <div class="fe-ex-num">${gNum}</div>
+          <input class="fe-inp" style="flex:1" value="${esc(ex.name)}" placeholder="운동 이름" oninput="feBuf.days[${feDay}].sections[${si}].exercises[${ei}].name=this.value">
+          <button class="fe-del-btn" onclick="feDel(${si},${ei})">×</button>
+        </div>
+        <div class="fe-field-lbl">무게</div>
+        <div class="cpick" id="fewc_${si}_${ei}"></div>
+        <div class="direct-row">
+          <span class="direct-lbl">직접 입력</span>
+          <input class="direct-inp" id="fewD_${si}_${ei}" type="number" step="0.5" min="0" value="${ex.w}" oninput="feSetW(${si},${ei},parseFloat(this.value)||0)">
+          <span class="direct-unit">kg</span>
+        </div>
+        <div class="fe-field-lbl" style="margin-top:6px;">횟수 / 시간</div>
+        <div class="ru-row" style="padding:0 0 8px;">
+          <button class="ru-btn${ru==='회'?' on':''}" id="feruR_${si}_${ei}" onclick="feSetRU(${si},${ei},'회')">횟수 (회)</button>
+          <button class="ru-btn${ru==='초'?' on':''}" id="feruS_${si}_${ei}" onclick="feSetRU(${si},${ei},'초')">시간 (초)</button>
+        </div>
+        <div class="cpick" id="ferc_${si}_${ei}"></div>
+        <div class="direct-row" style="margin-bottom:4px;">
+          <span class="direct-lbl">직접 입력</span>
+          <input class="direct-inp" id="ferD_${si}_${ei}" type="number" min="1" value="${ex.rep}" oninput="feSetR(${si},${ei},parseInt(this.value)||1)">
+          <span class="direct-unit" id="ferU_${si}_${ei}">${ru}</span>
+        </div>
+        <div class="fe-sets-row" style="margin-top:8px;">
+          <span class="fe-sets-lbl">세트</span>
+          <button class="fe-adj-btn" onclick="feAdj(${si},${ei},-1)">−</button>
+          <span class="fe-adj-val" id="fev_${si}_${ei}">${ex.sets}</span>
+          <button class="fe-adj-btn" onclick="feAdj(${si},${ei},1)">+</button>
+        </div>
+      </div>`;
+    });
+    html+=`<button class="fe-add-btn" onclick="feAdd(${si})">+ 운동 추가</button>`;
+  });
+  document.getElementById('feContent').innerHTML=html;
+  // populate chips after DOM update
+  day.sections.forEach((sec,si)=>{
+    sec.exercises.forEach((ex,ei)=>{
+      feRenderWChips(si,ei);
+      feRenderRChips(si,ei);
+    });
+  });
+}
+
+function feRenderWChips(si,ei){
+  const ex=feBuf.days[feDay].sections[si].exercises[ei];
+  const c=document.getElementById(`fewc_${si}_${ei}`);if(!c)return;
+  c.innerHTML='';
+  WTS.forEach(v=>{
+    const el=document.createElement('div');
+    el.className='chip'+(v==ex.w?' sel':'');
+    el.textContent=v===0?'체중':`${v}kg`;
+    el.onclick=()=>feSetW(si,ei,v);
+    c.appendChild(el);
+  });
+  const sel=c.querySelector('.sel');
+  if(sel)setTimeout(()=>sel.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'}),60);
+}
+function feRenderRChips(si,ei){
+  const ex=feBuf.days[feDay].sections[si].exercises[ei];
+  const arr=(ex.ru||'회')==='초'?RS:RH;
+  const c=document.getElementById(`ferc_${si}_${ei}`);if(!c)return;
+  c.innerHTML='';
+  arr.forEach(v=>{
+    const el=document.createElement('div');
+    el.className='chip'+(v==ex.rep?' sel':'');
+    el.textContent=`${v}${ex.ru||'회'}`;
+    el.onclick=()=>feSetR(si,ei,v);
+    c.appendChild(el);
+  });
+  const sel=c.querySelector('.sel');
+  if(sel)setTimeout(()=>sel.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'}),60);
+}
+function feSetW(si,ei,val){
+  feBuf.days[feDay].sections[si].exercises[ei].w=val;
+  document.querySelectorAll(`#fewc_${si}_${ei} .chip`).forEach(c=>c.classList.toggle('sel',parseFloat(c.textContent)==val||(val===0&&c.textContent==='체중')));
+  const inp=document.getElementById(`fewD_${si}_${ei}`);if(inp)inp.value=val;
+}
+function feSetR(si,ei,val){
+  feBuf.days[feDay].sections[si].exercises[ei].rep=val;
+  const ru=feBuf.days[feDay].sections[si].exercises[ei].ru||'회';
+  document.querySelectorAll(`#ferc_${si}_${ei} .chip`).forEach(c=>c.classList.toggle('sel',parseInt(c.textContent)==val));
+  const inp=document.getElementById(`ferD_${si}_${ei}`);if(inp)inp.value=val;
+}
+function feSetRU(si,ei,u){
+  feBuf.days[feDay].sections[si].exercises[ei].ru=u;
+  const rBtn=document.getElementById(`feruR_${si}_${ei}`),sBtn=document.getElementById(`feruS_${si}_${ei}`);
+  if(rBtn)rBtn.classList.toggle('on',u==='회');if(sBtn)sBtn.classList.toggle('on',u==='초');
+  const uEl=document.getElementById(`ferU_${si}_${ei}`);if(uEl)uEl.textContent=u;
+  feRenderRChips(si,ei);
+}
+function feAdj(si,ei,d){
+  const ex=feBuf.days[feDay].sections[si].exercises[ei];
+  ex.sets=Math.max(1,Math.min(10,ex.sets+d));
+  const el=document.getElementById(`fev_${si}_${ei}`);if(el)el.textContent=ex.sets;
+}
+function feDel(si,ei){
+  if(feBuf.days[feDay].sections[si].exercises.length<=1){alert('최소 1개 이상 있어야 해요.');return;}
+  feBuf.days[feDay].sections[si].exercises.splice(ei,1);renderFeContent();
+}
+function feAdd(si){
+  feBuf.days[feDay].sections[si].exercises.push({name:'새 운동',w:20,rep:10,sets:3,ru:'회',m:'chest',vf:'front',crop:'up'});
+  renderFeContent();
+  setTimeout(()=>{const cards=document.querySelectorAll('.fe-ex-card');if(cards.length)cards[cards.length-1].scrollIntoView({behavior:'smooth',block:'center'});},60);
+}
+function esc(s){return(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+/* ══ PAGE NAV ══ */
+function showPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(el=>el.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('nb-'+p).classList.add('on');
+  window.scrollTo(0,0);
+  if(p==='stats')renderStats();
+  if(p==='settings'){document.querySelectorAll('.sopt').forEach((el,i)=>el.classList.toggle('on',[2,3,4,5][i]===D.splitType));}
+}
+
+/* ══ STATS ══ */
+function renderStats(){
+  const di=curDayIdx,st=dayStats(di),pct=st.t>0?Math.round(st.d/st.t*100):0;
+  document.getElementById('statsCards').innerHTML=`<div class="stat-card"><div class="stat-big">${pct}%</div><div class="stat-lb">오늘 완료율</div></div><div class="stat-card"><div class="stat-big">${st.d}<span style="font-size:20px;color:var(--t3)">/${st.t}</span></div><div class="stat-lb">오늘 세트</div></div>`;
+  const wr=document.getElementById('weekRow');wr.innerHTML='';
+  const DK2=['일','월','화','수','목','금','토'],now=new Date(),dow=now.getDay();
+  for(let i=0;i<7;i++){const d2=new Date(now);d2.setDate(now.getDate()-dow+i);const key=`${d2.getFullYear()}-${d2.getMonth()+1}-${d2.getDate()}`;const isT=i===dow,worked=!!D.weekHistory[key];const el=document.createElement('div');el.className='wd'+(isT?' today':'')+(worked?' worked':'');el.innerHTML=`<div class="wd-n">${DK2[i]}</div><div class="wd-d">${d2.getDate()}</div><div class="wd-dot"></div>`;wr.appendChild(el);}
+  const br=document.getElementById('bpartRows');br.innerHTML='';
+  getday(di).sections.forEach((sec,si)=>{let t=0,d=0;sec.exercises.forEach((ex,ei)=>{for(let s=0;s<ex.sets;s++){t++;if(getCheck(di,si,ei,s))d++;}});const pct2=t>0?Math.round(d/t*100):0;br.innerHTML+=`<div class="bpart-row"><div class="bpart-lbl"><span class="bpart-nm">${sec.name}</span><span class="bpart-v">${d}/${t}세트</span></div><div class="bpart-bg"><div class="bpart-f" style="width:${pct2}%"></div></div></div>`;});
+}
+
+/* ══ SETTINGS ══ */
+function setSplit(n){
+  if(n===D.splitType)return;
+  showConfirm(`${n}분할로 변경`,`변경하면 현재 체크 기록이 초기화돼요.`,()=>{D.splitType=n;curDayIdx=0;D.checks={};save();document.querySelectorAll('.sopt').forEach((el,i)=>el.classList.toggle('on',[2,3,4,5][i]===n));render();});
+}
+function confirmReset(){showConfirm('전체 초기화','모든 기록이 삭제돼요.',()=>{localStorage.removeItem('pt_v6');location.reload();});}
+
+/* ══ CONFIRM ══ */
+let cfCb=null;
+function showConfirm(tt,sub,cb){document.getElementById('ctt').textContent=tt;document.getElementById('csub').textContent=sub;cfCb=cb;document.getElementById('cov').classList.add('open');}
+function closeConfirm(){document.getElementById('cov').classList.remove('open');}
+document.getElementById('cyes').onclick=()=>{closeConfirm();if(cfCb)cfCb();};
+
+/* ══ CLOCK ══ */
+const DK=['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+function tick(){const n=new Date(),y=n.getFullYear(),mo=n.getMonth()+1,d=n.getDate(),h=String(n.getHours()).padStart(2,'0'),m=String(n.getMinutes()).padStart(2,'0'),s=String(n.getSeconds()).padStart(2,'0');document.getElementById('dB').innerHTML=`${y}.<em>${String(mo).padStart(2,'0')}</em>.${String(d).padStart(2,'0')}`;document.getElementById('dK').textContent=DK[n.getDay()];document.getElementById('clk').textContent=`${h}:${m}:${s}`;}
+setInterval(tick,1000);tick();
+
+/* ══ TIMER ══ */
+let tiv=null,tTot=0,tLeft=0,tPre=0;
+const AC=typeof AudioContext!=='undefined'?new AudioContext():typeof webkitAudioContext!=='undefined'?new webkitAudioContext():null;
+function beep(f,d,v){if(!AC)return;try{const o=AC.createOscillator(),g=AC.createGain();o.connect(g);g.connect(AC.destination);o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(v,AC.currentTime);g.gain.exponentialRampToValueAtTime(0.01,AC.currentTime+d);o.start();o.stop(AC.currentTime+d);}catch(e){}}
+function alarmS(){[0,.28,.56,.84,1.12].forEach((t,i)=>setTimeout(()=>beep(i%2===0?1047:880,.22,.65),t*1000));}
+function startTimer(sec){stopTimer();tTot=sec;tLeft=sec;tPre=sec;document.getElementById(sec===70?'b70':'b130').classList.add('on');document.getElementById(sec===70?'b130':'b70').classList.remove('on');document.getElementById('tSt').textContent='진행중';document.getElementById('tSt').className='tmr-st on';if(AC&&AC.state==='suspended')AC.resume();beep(660,.1,.3);tiv=setInterval(tickT,1000);tickT();}
+function tickT(){if(tLeft<=0){clearInterval(tiv);tiv=null;fireAlarm();return;}const m=Math.floor(tLeft/60),s=tLeft%60;document.getElementById('tN').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;const pct=tLeft/tTot*100;const bar=document.getElementById('tB');bar.style.width=pct+'%';const num=document.getElementById('tN');if(tLeft<=10){num.className='tmr-n warn';bar.className='tmr-bf warn';}else{num.className='tmr-n';bar.className='tmr-bf';}if(tLeft===10)beep(660,.15,.5);if([5,3,1].includes(tLeft))beep(880,.18,.6);tLeft--;}
+function stopTimer(){clearInterval(tiv);tiv=null;tLeft=0;tTot=0;document.getElementById('tN').textContent='00:00';document.getElementById('tN').className='tmr-n';document.getElementById('tB').style.width='100%';document.getElementById('tB').className='tmr-bf';document.getElementById('tSt').textContent='대기중';document.getElementById('tSt').className='tmr-st';document.getElementById('b70').classList.remove('on');document.getElementById('b130').classList.remove('on');}
+function fireAlarm(){document.getElementById('tN').textContent='00:00';document.getElementById('tN').className='tmr-n fin';document.getElementById('tB').style.width='0%';document.getElementById('tSt').textContent='완료!';document.getElementById('tSt').className='tmr-st on';document.getElementById('b70').classList.remove('on');document.getElementById('b130').classList.remove('on');const fl=document.getElementById('af');fl.classList.add('bm');setTimeout(()=>fl.classList.remove('bm'),2200);if(navigator.vibrate)navigator.vibrate([600,180,600,180,600,180,600]);alarmS();document.getElementById('aSub').textContent=tPre===70?'1분 10초 휴식 완료':'2분 10초 휴식 완료';setTimeout(()=>document.getElementById('ap').classList.add('show'),350);}
+function closeAlarm(){document.getElementById('ap').classList.remove('show');document.getElementById('tN').className='tmr-n';}
+
+load();render();
+
+/* ══ SWIPE TO CLOSE (quick edit) ══ */
+(function(){
+  const sheet=document.getElementById('qeSheet');
+  let startY=0,dragging=false;
+  sheet.addEventListener('touchstart',e=>{
+    startY=e.touches[0].clientY;dragging=sheet.scrollTop===0;
+  },{passive:true});
+  sheet.addEventListener('touchmove',e=>{
+    if(!dragging)return;
+    const dy=e.touches[0].clientY-startY;
+    if(dy>0){sheet.style.transform=`translateY(${dy}px)`;sheet.style.transition='none';}
+  },{passive:true});
+  sheet.addEventListener('touchend',e=>{
+    if(!dragging)return;
+    const dy=e.changedTouches[0].clientY-startY;
+    sheet.style.transition='';
+    if(dy>110){closeQEdit();}else{sheet.style.transform='';}
+    dragging=false;
+  },{passive:true});
+})();
+</script>
+</body>
+</html>
