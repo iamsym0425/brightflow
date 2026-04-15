@@ -384,9 +384,9 @@ body.dark .rt-day{color:#555}
 .rt-apply{width:100%;padding:14px;border-radius:15px;font-size:15px;font-weight:900;margin-top:10px;letter-spacing:-.2px}
 
 /* MODAL */
-.modal-overlay{position:fixed;inset:0;z-index:100}
+.modal-overlay{position:fixed;inset:0;z-index:100;touch-action:none}
 .modal-dim{position:absolute;inset:0}
-.sheet-wrap{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;z-index:101}
+.sheet-wrap{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;z-index:101;touch-action:pan-y}
 .sheet{border-radius:28px 28px 0 0;padding:0 22px 52px;width:100%;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .sheet::-webkit-scrollbar{display:none}
 .handle-zone{padding:14px 0 10px;display:flex;justify-content:center;cursor:grab;min-height:36px}
@@ -611,23 +611,27 @@ const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>
 function load(){try{const s=localStorage.getItem("ps2");return s?JSON.parse(s):null;}catch{return null;}}
 function save(){try{localStorage.setItem("ps2",JSON.stringify({posts:S.posts,ideas:S.ideas,dark:S.dark,routine:S.routine,notif:S.notif,selDate:S.selDate}));}catch{}}
 
-/* iOS-safe body scroll lock */
+/* iOS-safe body scroll lock — NO position:fixed on body */
 let _lockScrollY=0;
 function lockBody(){
-  _lockScrollY=window.scrollY;
+  // Lock the R-main scroll container, not the body
+  const main=document.getElementById("R-main");
+  if(main){main.style.overflow="hidden";main.dataset.locked="1";}
   document.body.style.overflow="hidden";
-  document.body.style.position="fixed";
-  document.body.style.top=`-${_lockScrollY}px`;
-  document.body.style.left="0";
-  document.body.style.right="0";
+  // Also block touchmove on background
+  document._modalTouchBlock=(e)=>{
+    if(!e.target.closest(".sheet,.sheet-bg,.srch-overlay,.ai-overlay,.srch-results,.ai-messages,.filter-sheet,.filter-scroll"))e.preventDefault();
+  };
+  document.addEventListener("touchmove",document._modalTouchBlock,{passive:false});
 }
 function unlockBody(){
+  const main=document.getElementById("R-main");
+  if(main){main.style.overflow="";delete main.dataset.locked;}
   document.body.style.overflow="";
-  document.body.style.position="";
-  document.body.style.top="";
-  document.body.style.left="";
-  document.body.style.right="";
-  window.scrollTo(0,_lockScrollY);
+  if(document._modalTouchBlock){
+    document.removeEventListener("touchmove",document._modalTouchBlock);
+    delete document._modalTouchBlock;
+  }
 }
 const saved=load();
 let pendingIdea=null;
@@ -1526,7 +1530,7 @@ function rModal(){
   if(!S.modal){root.innerHTML="";return;}
   const p=S.modal.post,isAdd=S.modal.mode==="add",c=ct(p.type);
   root.innerHTML=`<div class="modal-overlay">
-    <div class="modal-dim dim-bg" style="opacity:0;transition:opacity .28s"></div>
+    <div class="modal-dim dim-bg" style="opacity:0;transition:opacity .28s" ontouchmove="event.preventDefault()" ontouchstart="event.stopPropagation()"></div>
     <div class="sheet-wrap">
       <div class="sheet sheet-bg" id="modal-sheet" style="transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1)">
         <div class="handle-zone" id="modal-handle"><div class="handle handle-c"></div></div>
@@ -1573,14 +1577,13 @@ function rModal(){
   // Swipe to close — entire top drag zone (handle + title)
   let msx=0,mcx=0,mactive=false;
   const mh=document.getElementById("modal-handle"),ms=document.getElementById("modal-sheet");
-  // Make sheet title area also draggable
   const mTitle=ms?.querySelector(".sheet-title");
   [mh,mTitle].forEach(el=>{
     if(!el)return;
     el.addEventListener("touchstart",e=>{msx=e.touches[0].clientY;mcx=0;mactive=true;ms.style.transition="none";},{passive:true});
+    el.addEventListener("touchmove",e=>{if(!mactive)return;e.preventDefault();const dy=e.touches[0].clientY-msx;mcx=Math.max(0,dy);ms.style.transform=`translateY(${mcx}px)`;},{passive:false});
+    el.addEventListener("touchend",()=>{if(!mactive)return;mactive=false;ms.style.transition="transform .22s cubic-bezier(.4,0,.2,1)";if(mcx>80){ms.style.transform="translateY(100%)";setTimeout(()=>closeModal(true),220);}else ms.style.transform="";},{passive:true});
   });
-  window.addEventListener("touchmove",e=>{if(!mactive)return;const dy=e.touches[0].clientY-msx;mcx=Math.max(0,dy);ms.style.transform=`translateY(${mcx}px)`;},{passive:true});
-  window.addEventListener("touchend",()=>{if(!mactive)return;mactive=false;ms.style.transition="transform .22s cubic-bezier(.4,0,.2,1)";if(mcx>80){ms.style.transform="translateY(100%)";setTimeout(()=>closeModal(true),220);}else ms.style.transform="";},{passive:true});
 
   document.getElementById("btn-mc")?.addEventListener("click",()=>{haptic("light");closeModal(true);});
   document.getElementById("btn-ms")?.addEventListener("click",saveModal);
