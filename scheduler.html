@@ -651,21 +651,8 @@ const S={
   newIdeaTxt:"",newIdeaType:"routine_carousel",newIdeaMemo:"",
   notif:saved?.notif||false,
   _filterRefresh:null,
-  posts:saved?.posts?savedPosts:[
-    {id:1,type:"routine_carousel",title:"등 루틴 5종 세트",status:"done",date:off(-5),time:"12:00",memo:"",aiVoice:false,pinned:false},
-    {id:2,type:"emotion_carousel",title:"3개월 바디체인지",status:"done",date:off(-2),time:"18:00",memo:"",aiVoice:false,pinned:false},
-    {id:3,type:"shorts",title:"바벨로우 폼 교정",status:"editing",date:fmt(TODAY),time:"19:00",memo:"",aiVoice:true,pinned:false},
-    {id:4,type:"reels1",title:"어깨 3대 실수 지식캡션",status:"ready",date:off(1),time:"18:00",memo:"",aiVoice:false,pinned:false},
-    {id:5,type:"routine_carousel",title:"가슴 루틴 풀버전",status:"filming",date:off(2),time:"12:00",memo:"",aiVoice:false,pinned:true},
-    {id:6,type:"reels2",title:"바벨로우 숏츠→릴스",status:"idea",date:off(4),time:"18:00",memo:"",aiVoice:false,pinned:false},
-    {id:7,type:"shorts",title:"데드리프트 입문",status:"idea",date:off(5),time:"19:00",memo:"",aiVoice:true,pinned:false},
-    {id:8,type:"midform",title:"3개월 벌크업 총정리",status:"idea",date:off(8),time:"19:00",memo:"",aiVoice:true,pinned:false},
-  ],
-  ideas:saved?.ideas?savedIdeas:[
-    {id:101,text:"스쿼트 깊이 전후 비교",type:"shorts"},
-    {id:102,text:"단백질 타이밍 루틴 캐러셀",type:"routine_carousel"},
-    {id:103,text:"홈트 vs 헬스장 3개월 비교",type:"emotion_carousel"},
-  ],
+  posts:saved?.posts?savedPosts:[],
+  ideas:saved?.ideas?savedIdeas:[],
   routine:saved?.routine||[
     {day:0,type:"routine_carousel",time:"12:00"},
     {day:1,type:RT_NONE,time:"18:00"},
@@ -1946,7 +1933,7 @@ function renderStatsUI(root, fromDate="", toDate=""){
 }
 
 /* ─── YOUTUBE REAL STATS ─── */
-const YT_API_KEY="AIzaSyC3H8lopJuepARaeShF9DG9W-AK-UcRP4M";
+const YT_API_KEY=localStorage.getItem("bf_yt_key")||"";
 const YT_CHANNEL_ID="UCGzfv7RKvGOI8FYWry5AByg";
 let _ytCache=null; // 캐시로 API 절약
 
@@ -1956,6 +1943,31 @@ async function loadYouTubeStats(){
   if(refreshBtn)refreshBtn.onclick=()=>{_ytCache=null;loadYouTubeStats();};
   if(!body)return;
 
+  // API 키 없으면 입력 화면
+  if(!localStorage.getItem("bf_yt_key")){
+    body.innerHTML=`
+      <div style="padding:4px 0 10px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px">YouTube API 키 입력</div>
+        <div style="font-size:11px;font-weight:500;opacity:.6;margin-bottom:12px;line-height:1.5">Google Cloud Console에서 발급한 YouTube Data API v3 키를 입력하세요. 이 기기에만 저장돼요.</div>
+        <input id="yt-key-input" class="fi" type="password" placeholder="AIzaSy..." style="font-size:12px;width:100%;margin-bottom:8px;letter-spacing:.3px">
+        <button id="yt-key-save" class="btn-p" style="width:100%;padding:11px;border-radius:12px;font-size:13px;font-weight:900;border:none;cursor:pointer">저장하고 불러오기</button>
+        <button id="yt-key-reset" class="btn-g" style="width:100%;padding:8px;border-radius:12px;font-size:12px;font-weight:700;border:none;cursor:pointer;margin-top:6px">키 삭제</button>
+      </div>`;
+    document.getElementById("yt-key-save")?.addEventListener("click",()=>{
+      const key=document.getElementById("yt-key-input")?.value.trim();
+      if(!key||!key.startsWith("AIza")){toast("⚠️ 올바른 YouTube API 키를 입력해주세요");return;}
+      localStorage.setItem("bf_yt_key",key);
+      haptic("success");toast("✅ YouTube API 키 저장됐어요!");
+      loadYouTubeStats();
+    });
+    return;
+  }
+
+  // 키 삭제 버튼 바인딩 (기존 UI에)
+  document.getElementById("yt-key-reset")?.addEventListener("click",()=>{
+    localStorage.removeItem("bf_yt_key");_ytCache=null;loadYouTubeStats();
+  });
+
   // 캐시 있으면 재사용
   if(_ytCache){renderYTStats(_ytCache);return;}
 
@@ -1963,7 +1975,7 @@ async function loadYouTubeStats(){
 
   try{
     // 채널 기본 정보
-    const chRes=await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics,contentDetails&id=${YT_CHANNEL_ID}&key=${YT_API_KEY}`);
+    const chRes=await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics,contentDetails&id=${YT_CHANNEL_ID}&key=${localStorage.getItem("bf_yt_key")||""}`);
     const chData=await chRes.json();
     if(chData.error)throw new Error(chData.error.message);
     const ch=chData.items?.[0];
@@ -1972,7 +1984,7 @@ async function loadYouTubeStats(){
     const uploadsId="UU"+YT_CHANNEL_ID.slice(2);
 
     // 최근 50개 영상
-    const plRes=await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsId}&maxResults=50&key=${YT_API_KEY}`);
+    const plRes=await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsId}&maxResults=50&key=${localStorage.getItem("bf_yt_key")||""}`);
     const plData=await plRes.json();
     const basicVideos=(plData.items||[]).map(v=>({
       id:v.snippet.resourceId.videoId,
@@ -1983,7 +1995,7 @@ async function loadYouTubeStats(){
 
     // 영상별 상세 통계 (조회수, 좋아요, 댓글, 길이)
     const vidIds=basicVideos.map(v=>v.id).join(",");
-    const vRes=await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=${vidIds}&key=${YT_API_KEY}`);
+    const vRes=await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=${vidIds}&key=${localStorage.getItem("bf_yt_key")||""}`);
     const vData=await vRes.json();
     const vstats={};
     (vData.items||[]).forEach(v=>{
@@ -2027,6 +2039,24 @@ function renderYTStats({videos,cStats},filterFrom="",filterTo=""){
   const totalLikes=filtered.reduce((s,v)=>s+v.likes,0);
   const avgViews=filtered.length?Math.round(totalViews/filtered.length):0;
 
+  // 감정 메시지 생성
+  const days=filterFrom&&filterTo?Math.round((new Date(filterTo)-new Date(filterFrom))/86400000)+1:30;
+  const perWeek=(filtered.length/days*7);
+  const getEmotion=()=>{
+    if(!filtered.length)return{emoji:"😴",msg:"이 기간엔 업로드가 없었어요. 다음엔 더 열심히!",color:"#888"};
+    if(filtered.length>=20)return{emoji:"🔥",msg:"완전 미쳤어요! 이 속도면 알고리즘이 당신을 사랑할 수밖에 없어요.",color:"#FF4500"};
+    if(filtered.length>=14)return{emoji:"💪",msg:"꾸준함이 폭발했어요! 주 2개 이상 유지 중. 채널이 성장할 수밖에 없는 페이스.",color:"#0E9464"};
+    if(filtered.length>=10)return{emoji:"⚡",msg:"좋은 리듬이에요! 이 페이스 유지하면 확실히 성과가 나요.",color:"#D07020"};
+    if(filtered.length>=7)return{emoji:"👍",msg:"주 1~2개 꾸준히 올리고 있어요. 조금만 더 올려볼까요?",color:"#2272D4"};
+    if(filtered.length>=3)return{emoji:"🌱",msg:"시작했어요! 조금씩 늘려가면 돼요. 시작이 반이에요.",color:"#8A3AB9"};
+    return{emoji:"💡",msg:"업로드가 적었던 기간이에요. 아이디어는 있으니 더 올려봐요!",color:"#888"};
+  };
+  const emotion=getEmotion();
+
+  // 날짜 레이블
+  const fromLabel=filterFrom?filterFrom.slice(5).replace("-","월 ")+"일":"전체";
+  const toLabel=filterTo?filterTo.slice(5).replace("-","월 ")+"일":"오늘";
+
   // TOP 3 영상
   const top3=[...filtered].sort((a,b)=>b.views-a.views).slice(0,3);
 
@@ -2035,14 +2065,45 @@ function renderYTStats({videos,cStats},filterFrom="",filterTo=""){
   filtered.forEach(v=>{const m=v.date.slice(0,7);if(!monthly[m])monthly[m]={cnt:0,views:0};monthly[m].cnt++;monthly[m].views+=v.views;});
   const monthKeys=Object.keys(monthly).sort().reverse().slice(0,6);
 
+  // 상위 조회수 영상 분석
+  const bestVideo=top3[0];
+  const bestType=shorts.length>longs.length?"Shorts":"일반영상";
+
   body.innerHTML=`
     <!-- 날짜 필터 -->
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
       <div style="font-size:11px;font-weight:700;opacity:.6">기간</div>
       <input type="date" id="yt-from" value="${filterFrom||videos[videos.length-1]?.date||''}" style="flex:1;padding:6px 8px;border-radius:8px;font-size:11px;font-family:inherit;border:none" class="fi">
       <div style="font-size:10px;opacity:.4">~</div>
       <input type="date" id="yt-to" value="${filterTo||nowFmt()}" style="flex:1;padding:6px 8px;border-radius:8px;font-size:11px;font-family:inherit;border:none" class="fi">
       <button id="yt-filter-btn" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;border:none;cursor:pointer;flex-shrink:0" class="btn-p">조회</button>
+    </div>
+
+    <!-- ★ 감정 업로드 카운터 카드 -->
+    <div style="border-radius:20px;overflow:hidden;margin-bottom:14px;border:2px solid ${emotion.color}33">
+      <div style="padding:20px 18px 16px;background:${emotion.color}12">
+        <div style="font-size:42px;margin-bottom:6px;line-height:1">${emotion.emoji}</div>
+        <div style="font-size:13px;font-weight:700;opacity:.65;margin-bottom:4px">${fromLabel} ~ ${toLabel}</div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
+          <div style="font-size:52px;font-weight:900;letter-spacing:-3px;color:${emotion.color};line-height:1">${filtered.length}</div>
+          <div style="font-size:16px;font-weight:800;opacity:.7">개 올리셨어요!</div>
+        </div>
+        <div style="font-size:13px;font-weight:600;line-height:1.6;opacity:.85">${emotion.msg}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;background:${emotion.color}08">
+        <div style="padding:12px 8px;text-align:center;border-right:1px solid ${emotion.color}20">
+          <div style="font-size:16px;font-weight:900;color:${emotion.color}">${perWeek.toFixed(1)}</div>
+          <div style="font-size:9px;font-weight:700;opacity:.55;margin-top:2px">개/주 평균</div>
+        </div>
+        <div style="padding:12px 8px;text-align:center;border-right:1px solid ${emotion.color}20">
+          <div style="font-size:16px;font-weight:900;color:${emotion.color}">${fmtN(totalViews)}</div>
+          <div style="font-size:9px;font-weight:700;opacity:.55;margin-top:2px">총 조회수</div>
+        </div>
+        <div style="padding:12px 8px;text-align:center">
+          <div style="font-size:16px;font-weight:900;color:${emotion.color}">${fmtN(avgViews)}</div>
+          <div style="font-size:9px;font-weight:700;opacity:.55;margin-top:2px">평균 조회수</div>
+        </div>
+      </div>
     </div>
 
     <!-- 채널 요약 -->
