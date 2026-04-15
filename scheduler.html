@@ -162,6 +162,15 @@ body.dark .stat-bar-track{background:#222}
 body.light .stat-type-bar-wrap{background:#E8E7E1}
 body.dark .stat-type-bar-wrap{background:#222}
 .weekly-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.weekly-day{display:flex;flex-direction:column;align-items:center;gap:3px}
+.weekly-bar-wrap{width:100%;height:44px;display:flex;align-items:flex-end;justify-content:center;border-radius:6px}
+body.light .weekly-bar-wrap{background:#E8E7E1}
+body.dark .weekly-bar-wrap{background:#1E1E1A}
+.weekly-bar{width:70%;border-radius:4px 4px 0 0;transition:height .4s cubic-bezier(.4,0,.2,1)}
+.weekly-label{font-size:9px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
+.weekly-cnt{font-size:10px;font-weight:700;min-height:14px}
+body.light .weekly-cnt{color:#888}
+body.dark .weekly-cnt{color:#555}
 .week-col{display:flex;flex-direction:column;align-items:center;gap:4px}
 .week-col-day{font-size:9px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
 .week-col-bar-wrap{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:60px;border-radius:6px}
@@ -1505,7 +1514,13 @@ function closeModal(cancelled=false){
   }
   pendingIdea=null;S.modal=null;unlockBody();
   rModal();rMetrics();
-  // Real-time refresh filter if open
+  // _afterEditClose 훅 (성과지표에서 편집 후 복귀)
+  if(S._afterEditClose){
+    const hook=S._afterEditClose;
+    S._afterEditClose=null;
+    setTimeout(()=>hook(),100);
+    return;
+  }
   if(S._filterRefresh){
     S._filterRefresh();
   }else{
@@ -1783,7 +1798,15 @@ function renderStatsUI(root, fromDate="", toDate=""){
     filteredDone.map(p=>{const c=ct(p.type);return'<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(128,128,128,.06)"><div style="width:3px;height:32px;border-radius:2px;background:'+c.color+';flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.title)+'</div><div style="font-size:10px;opacity:.5;margin-top:2px;display:flex;gap:6px"><span>'+p.date+'</span><span style="color:'+c.color+';font-weight:700">'+c.label+'</span></div></div><div style="font-size:9px;padding:3px 8px;border-radius:6px;background:#E8F4D8;color:#274E10;font-weight:800;flex-shrink:0">완료</div></div>';}).join("")
   ):"";
 
-  const last7HTML=last7.map(x=>'<div class="weekly-day"><div class="weekly-bar-wrap"><div class="weekly-bar" style="height:'+(x.cnt?Math.max(10,Math.round(x.cnt/max7*44)):0)+'px;background:'+(x.ds===nowFmt()?"#0E9464":"#2272D4")+'"></div></div><div class="weekly-label mu">'+x.day+'</div><div class="weekly-cnt">'+(x.cnt||"")+'</div></div>').join("");
+  const last7HTML=last7.map(x=>{
+    const h=x.cnt?Math.min(Math.max(Math.round(x.cnt/max7*40),10),40):0;
+    const isToday=x.ds===nowFmt();
+    return'<div class="weekly-day">'
+      +'<div class="weekly-bar-wrap"><div class="weekly-bar" style="height:'+h+'px;background:'+(isToday?"#0E9464":"#2272D4")+'"></div></div>'
+      +'<div class="weekly-label mu" style="'+(isToday?"color:#0E9464;font-weight:900":"")+'">'+(isToday?"오늘":x.day)+'</div>'
+      +'<div class="weekly-cnt">'+(x.cnt||"")+'</div>'
+    +'</div>';
+  }).join("");
 
   let html=`<div class="stats-overlay" id="stats-overlay" style="transform:translateY(100%);transition:transform .36s cubic-bezier(.4,0,.2,1)">
     <div class="stats-topbar">
@@ -1843,12 +1866,13 @@ function renderStatsUI(root, fromDate="", toDate=""){
             const typePosts=S.posts.filter(p=>p.type===x.k);
             const stBreak=ST.map(s=>({s,n:typePosts.filter(p=>p.status===s.key).length})).filter(b=>b.n>0);
             const bars=typePosts.map(p=>'<div style="flex:1;height:6px;border-radius:3px;background:'+st(p.status).dot+'"></div>').join("");
-            const badges=stBreak.map(b=>'<span style="padding:3px 9px;border-radius:7px;font-size:11px;font-weight:800;background:'+b.s.bg+';color:'+b.s.tc+'">'+b.s.label+' '+b.n+'</span>').join("");
-            return`<div style="padding:14px;border-radius:16px;margin-bottom:10px" class="s1">
+            const badges=stBreak.map(b=>'<span data-type-st="'+b.s.key+'" data-type-k="'+x.k+'" style="padding:5px 11px;border-radius:8px;font-size:11px;font-weight:800;background:'+b.s.bg+';color:'+b.s.tc+';cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.1)" ontouchstart="this.style.transform=\'scale(.94)\'" ontouchend="this.style.transform=\'\'">'+b.s.label+' '+b.n+'</span>').join("");
+            return`<div data-type-nav="${x.k}" style="padding:14px;border-radius:16px;margin-bottom:10px;cursor:pointer;transition:transform .1s" class="s1" ontouchstart="this.style.transform='scale(.98)'" ontouchend="this.style.transform=''">
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
                 ${platformBadge(x.v.platform,"sm")}
                 <div style="flex:1;font-size:14px;font-weight:800;color:${x.v.color}">${x.v.label}</div>
                 <div style="font-size:22px;font-weight:900;color:${x.v.color};letter-spacing:-1px">${x.cnt}</div>
+                <div style="font-size:11px;opacity:.4;flex-shrink:0">탭하면 목록 →</div>
               </div>
               <div style="display:flex;gap:3px;margin-bottom:8px">${bars}</div>
               <div style="display:flex;flex-wrap:wrap;gap:5px">${badges}</div>
@@ -1895,10 +1919,22 @@ function renderStatsUI(root, fromDate="", toDate=""){
     setTimeout(()=>{document.getElementById("stats-root")?.remove();unlockBody();},380);
   });
 
+  // 타입 카드 탭 → 해당 타입 필터된 목록 팝업
+  document.querySelectorAll("[data-type-nav]").forEach(el=>el.addEventListener("click",e=>{
+    if(e.target.closest("[data-type-st]"))return;
+    haptic("tap");
+    const typeKey=el.dataset.typeNav;
+    openTypeList(typeKey);
+  }));
+
+  // 상태 뱃지 탭 → 해당 타입+상태 필터된 목록
+  document.querySelectorAll("[data-type-st]").forEach(el=>el.addEventListener("click",e=>{
+    e.stopPropagation();haptic("tap");
+    openTypeList(el.dataset.typeK, el.dataset.typeSt);
+  }));
+
   // 조회 버튼
   document.getElementById("sf-btn")?.addEventListener("click",()=>{
-    haptic("tap");
-    const from=document.getElementById("sf-from")?.value||"";
     const to=document.getElementById("sf-to")?.value||"";
     document.getElementById("stats-root")?.remove();
     renderStatsUI(root,from,to);
@@ -2198,6 +2234,129 @@ function renderYTStats({videos,cStats},filterFrom="",filterTo=""){
     const to=document.getElementById("yt-to")?.value||"";
     renderYTStats(_ytCache,from,to);
   });
+}
+
+function calcStreak(){
+  let streak=0,d=new Date(TODAY);
+  while(true){
+    const ds=fmt(d);
+    if(S.posts.some(p=>p.date===ds&&p.status==="done")){streak++;d.setDate(d.getDate()-1);}
+    else break;
+  }
+  return streak;
+}
+
+function openTypeList(typeKey, statusKey=""){
+  document.getElementById("type-list-root")?.remove();
+  const root=document.getElementById("R-modal");
+  const div=document.createElement("div");
+  div.id="type-list-root";
+  const c=ct(typeKey);
+  let posts=S.posts.filter(p=>p.type===typeKey);
+  if(statusKey)posts=posts.filter(p=>p.status===statusKey);
+  posts=posts.sort((a,b)=>b.date.localeCompare(a.date));
+  const s=statusKey?st(statusKey):null;
+  const title=c.label+(s?" · "+s.label:"");
+
+  const rows=posts.length?posts.map(p=>{
+    const ps=st(p.status);
+    return'<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;margin-bottom:8px;border:1.5px solid '+c.color+'18;background:'+c.color+'06">'
+      +'<div data-tl-id="'+p.id+'" style="flex:1;min-width:0;cursor:pointer" ontouchstart="this.style.opacity=\'.7\'" ontouchend="this.style.opacity=\'1\'">'
+        +'<div style="font-size:14px;font-weight:800;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.title)+'</div>'
+        +'<div style="font-size:11px;opacity:.55">'+p.date+' · '+p.time+'</div>'
+        +(p.memo?'<div style="font-size:11px;margin-top:4px;padding:4px 8px;border-radius:6px;background:'+c.color+'12;color:'+c.color+';font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.memo.split('\n')[0].slice(0,50))+'</div>':"")
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">'
+        +'<span data-tl-st="'+p.id+'" style="padding:6px 12px;border-radius:10px;font-size:11px;font-weight:800;background:'+ps.bg+';color:'+ps.tc+';cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.1)" ontouchstart="this.style.transform=\'scale(.92)\'" ontouchend="this.style.transform=\'\'">'+ps.label+' ✏️</span>'
+        +'<div data-tl-del="'+p.id+'" style="padding:4px 10px;border-radius:8px;font-size:10px;font-weight:700;background:#FF444418;color:#FF4444;cursor:pointer;text-align:center">🗑️</div>'
+      +'</div>'
+    +'</div>';
+  }).join(""):'<div style="text-align:center;padding:32px;opacity:.4;font-size:14px">'+c.label+' 콘텐츠 없음</div>';
+
+  div.innerHTML='<div style="position:fixed;inset:0;z-index:210;display:flex;align-items:flex-end;justify-content:center">'
+    +'<div style="position:absolute;inset:0;background:rgba(0,0,0,.4)" id="tl-dim"></div>'
+    +'<div id="tl-sheet" style="position:relative;width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:0 0 44px;z-index:1;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-height:80vh;display:flex;flex-direction:column" class="sheet-bg">'
+      +'<div style="padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid rgba(128,128,128,.1)">'
+        +'<div>'
+          +'<div style="font-size:16px;font-weight:900;letter-spacing:-.4px">'+esc(title)+'</div>'
+          +'<div id="tl-count" style="font-size:11px;font-weight:600;margin-top:2px;color:'+c.color+'">총 '+posts.length+'개</div>'
+        +'</div>'
+        +'<button id="tl-close" style="width:32px;height:32px;border-radius:16px;border:none;font-size:16px;cursor:pointer" class="btn-g">✕</button>'
+      +'</div>'
+      +'<div id="tl-body" style="overflow-y:auto;padding:12px 16px 8px;-webkit-overflow-scrolling:touch;touch-action:pan-y;flex:1">'+rows+'</div>'
+    +'</div>'
+  +'</div>';
+  // stats-root 위에 직접 append (R-modal 대신 body에)
+  document.body.appendChild(div);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.getElementById("tl-sheet").style.transform="translateY(0)";
+  }));
+
+  const close=()=>{
+    document.getElementById("tl-sheet").style.transform="translateY(100%)";
+    setTimeout(()=>div.remove(),300);
+  };
+  document.getElementById("tl-dim").addEventListener("click",close);
+  document.getElementById("tl-close").addEventListener("click",()=>{haptic("light");close();});
+
+  // 제목 탭 → 편집 (팝업 닫고 편집모달, 성과지표는 유지)
+  div.querySelectorAll("[data-tl-id]").forEach(el=>el.addEventListener("click",e=>{
+    haptic("light");
+    const p=S.posts.find(x=>x.id===+el.dataset.tlId);if(!p)return;
+    // 팝업만 닫고 편집모달 열기 (성과지표 페이지 그대로)
+    document.getElementById("tl-sheet").style.transform="translateY(100%)";
+    setTimeout(()=>{
+      div.remove();
+      S._afterEditClose=()=>{
+        // 편집 닫으면 성과지표 복원
+        openStats();
+      };
+      openModal("edit",{...p});
+    },300);
+  }));
+
+  // 상태 뱃지 탭 → 빠른 상태변경 (목록은 유지)
+  div.querySelectorAll("[data-tl-st]").forEach(el=>el.addEventListener("click",e=>{
+    e.stopPropagation();haptic("medium");
+    const id=+el.dataset.tlSt;
+    openQuickStatus(id,()=>{
+      // 상태변경 후 뱃지만 즉시 갱신 (페이지 이동 없음)
+      const p=S.posts.find(x=>x.id===id);
+      if(p){
+        const ps=st(p.status);
+        el.textContent=ps.label+' ✏️';
+        el.style.background=ps.bg;
+        el.style.color=ps.tc;
+      }
+      rMain();rMetrics();
+      // 성과지표 타입별 뱃지만 업데이트 (재렌더 없이)
+      document.querySelectorAll("[data-type-nav='"+typeKey+"'] span[data-type-st]").forEach(badge=>{
+        const stKey=badge.dataset.typeSt;
+        const cnt=S.posts.filter(p=>p.type===typeKey&&p.status===stKey).length;
+        const s=st(stKey);
+        if(cnt>0){badge.textContent=s.label+' '+cnt;badge.style.display="";}
+        else badge.style.display="none";
+      });
+    });
+  }));
+
+  // 삭제
+  div.querySelectorAll("[data-tl-del]").forEach(el=>el.addEventListener("click",e=>{
+    e.stopPropagation();haptic("heavy");
+    const id=+el.dataset.tlDel;
+    const card=el.closest("[style*='border-radius:14px']");
+    if(card){card.style.transition="opacity .2s,transform .2s";card.style.opacity="0";card.style.transform="translateX(30px)";}
+    setTimeout(()=>{
+      S.posts=S.posts.filter(p=>p.id!==id);
+      save();rMain();rMetrics();
+      card?.remove();
+      toast("🗑️ 삭제됐어요");
+      // 카운트 업데이트
+      const remaining=document.getElementById("tl-body")?.querySelectorAll("[data-tl-id]").length||0;
+      const cnt=document.getElementById("tl-count");
+      if(cnt)cnt.textContent="총 "+remaining+"개";
+    },200);
+  }));
 }
 
 function calcStreak(){
