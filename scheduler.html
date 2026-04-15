@@ -3311,9 +3311,9 @@ async function sendAIMessage(){
   haptic("tap");
   inp.value="";inp.style.height="auto";
 
-  // "n번 등록해줘" 패턴 감지 — AI 응답 전에 미리 체크
-  const registerMatch=msg.match(/(\d+)\s*번\s*(?:주제\s*)?(?:으로\s*)?등록/);
-  const allRegisterMatch=msg.match(/(?:전체|다|모두|전부)\s*등록/);
+  // "n번 등록해줘" 패턴 감지 — 더 유연하게
+  const registerMatch=msg.match(/(\d+)\s*번.*?등록/);
+  const allRegisterMatch=msg.match(/(?:전체|다|모두|전부).*?등록|등록.*?(?:전체|다|모두|전부)/);
 
   addAIMessage(msg,"user");
   aiChatHistory.push({role:"user",content:msg});
@@ -3382,39 +3382,49 @@ async function sendAIMessage(){
     addAIMessage(cleanReply,"ai");
 
     // "n번 등록해줘" 강제 처리 — JSON 없어도 대화에서 추출
-    const needForceRegister=(registerMatch||allRegisterMatch)&&!jsonMatch&&!multiMatch&&!mdJsonMatch&&!rawMultiMatch;
-    if(needForceRegister){
-      // 이전 AI 응답에서 번호 목록 추출
+    // "n번 등록해줘" 강제 처리 — JSON 있어도 없어도 항상 실행
+    if(registerMatch||allRegisterMatch){
       const prevAI=aiChatHistory.filter(m=>m.role==="assistant").slice(-1)[0]?.content||cleanReply;
-      const lines=prevAI.split(/\n/);
-      // "1. 제목", "1) 제목", "**1.** 제목" 패턴 추출
-      const numbered=lines.map(l=>{
-        const m=l.match(/^[\s*]*(\d+)[.)]\s*\*{0,2}(.+?)\*{0,2}\s*$/);
-        return m?{num:+m[1],title:m[2].trim()}:null;
-      }).filter(Boolean);
+      const allLines=[...prevAI.split(/\n/),...cleanReply.split(/\n/)];
+      const numbered=allLines.map(l=>{
+        const m=l.match(/^(?:#+\s*)?[\s*]*(\d+)[.):\s]\s*\*{0,2}(.+?)\*{0,2}\s*$/)
+          ||l.match(/^(?:#+\s+)(\d+)\s+\*{0,2}(.+?)\*{0,2}\s*$/);
+        return m?{num:+m[1],title:m[2].replace(/^["*\s]+|["*\s]+$/g,"").trim()}:null;
+      }).filter(x=>x&&x.title.length>2);
+      const seen=new Set();
+      const uniq=numbered.filter(x=>{if(seen.has(x.num))return false;seen.add(x.num);return true;});
 
-      if(numbered.length>0){
+      // 디버그
+      toast(`🔍 패턴감지: ${registerMatch?registerMatch[1]+"번":"전체"} / 목록${uniq.length}개`);
+      console.log("FORCE REGISTER - numbered:", uniq, "prevAI:", prevAI.slice(0,200));
+
+      const typeGuess=(s)=>s.includes("숏츠")||s.includes("shorts")?"shorts":
+        s.includes("릴스")||s.includes("reels")?"reels1":
+        s.includes("캐러셀")||s.includes("carousel")?"routine_carousel":
+        s.includes("미드폼")||s.includes("midform")?"midform":"shorts";
+      const allText=msg+prevAI+cleanReply;
+
+      if(uniq.length>0){
         if(allRegisterMatch){
-          // 전체 등록
-          const typeGuess=msg.includes("숏츠")||cleanReply.includes("shorts")?"shorts":
-            msg.includes("릴스")||cleanReply.includes("reels")?"reels1":
-            msg.includes("캐러셀")||cleanReply.includes("carousel")?"routine_carousel":"shorts";
-          const arr=numbered.map(x=>({title:x.title,type:typeGuess,memo:"",aiVoice:typeGuess==="shorts"}));
+          const arr=uniq.map(x=>({title:x.title,type:typeGuess(allText),memo:"",aiVoice:typeGuess(allText)==="shorts"}));
           addAIMultiCard(arr);
-        }else if(registerMatch){
+        }else{
           const targetNum=+registerMatch[1];
-          const found=numbered.find(x=>x.num===targetNum)||numbered[targetNum-1];
+          const found=uniq.find(x=>x.num===targetNum)||uniq[targetNum-1];
           if(found){
-            const typeGuess=msg.includes("숏츠")||cleanReply.includes("shorts")||prevAI.includes("shorts")?"shorts":
-              msg.includes("릴스")||cleanReply.includes("reels")||prevAI.includes("reels")?"reels1":
-              msg.includes("캐러셀")||cleanReply.includes("carousel")?"routine_carousel":"shorts";
-            addAIAddCard({title:found.title,type:typeGuess,memo:"",aiVoice:typeGuess==="shorts"});
+            addAIAddCard({title:found.title,type:typeGuess(allText),memo:"",aiVoice:typeGuess(allText)==="shorts"});
+            return;
+          }else{
+            toast("⚠️ "+targetNum+"번 항목을 못 찾았어요");
           }
         }
+        return;
+      }else{
+        toast("⚠️ 번호 목록을 못 찾았어요 — 이전 대화에 번호가 있나요?");
       }
-      return;
     }
 
+    // JSON 파싱으로 등록
     if(multiMatch){
       try{
         const arr=JSON.parse(multiMatch[1]);
