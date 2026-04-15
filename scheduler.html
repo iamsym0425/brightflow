@@ -610,6 +610,25 @@ const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>
 /* ─── LOAD/SAVE ─── */
 function load(){try{const s=localStorage.getItem("ps2");return s?JSON.parse(s):null;}catch{return null;}}
 function save(){try{localStorage.setItem("ps2",JSON.stringify({posts:S.posts,ideas:S.ideas,dark:S.dark,routine:S.routine,notif:S.notif,selDate:S.selDate}));}catch{}}
+
+/* iOS-safe body scroll lock */
+let _lockScrollY=0;
+function lockBody(){
+  _lockScrollY=window.scrollY;
+  document.body.style.overflow="hidden";
+  document.body.style.position="fixed";
+  document.body.style.top=`-${_lockScrollY}px`;
+  document.body.style.left="0";
+  document.body.style.right="0";
+}
+function unlockBody(){
+  document.body.style.overflow="";
+  document.body.style.position="";
+  document.body.style.top="";
+  document.body.style.left="";
+  document.body.style.right="";
+  window.scrollTo(0,_lockScrollY);
+}
 const saved=load();
 let pendingIdea=null;
 
@@ -745,7 +764,7 @@ function rMetrics(){
   const done=S.posts.filter(p=>p.status==="done").length;
   const inWork=S.posts.filter(p=>["filming","editing","ready"].includes(p.status)).length;
   document.getElementById("R-metrics").innerHTML=`<div class="metrics-row">
-    <div class="mc mc-a" data-mt="0" data-mf="week" title="이번주 예정"><span class="mc-icon">📅</span><div class="mc-body"><div class="mc-val">${tw.length}</div><div class="mc-lbl">이번주</div></div></div>
+    <div class="mc mc-a" data-mt="-1" data-mf="week" title="이번주 예정 보기"><span class="mc-icon">📅</span><div class="mc-body"><div class="mc-val">${tw.length}</div><div class="mc-lbl">이번주</div></div></div>
     <div class="mc mc-b" data-mt="-1" data-mf="done" title="완료 목록 보기"><span class="mc-icon">✅</span><div class="mc-body"><div class="mc-val">${done}</div><div class="mc-lbl">완료</div></div></div>
     <div class="mc mc-c" data-mt="-1" data-mf="work" title="진행중 목록 보기"><span class="mc-icon">🎬</span><div class="mc-body"><div class="mc-val">${inWork}</div><div class="mc-lbl">진행중</div></div></div>
     <div class="mc mc-d" data-mt="2" data-mf="idea" title="아이디어 보기"><span class="mc-icon">💡</span><div class="mc-body"><div class="mc-val">${S.ideas.length}</div><div class="mc-lbl">아이디어</div></div></div>
@@ -757,7 +776,7 @@ function rMetrics(){
     if(fr&&t>=0){
       fr.style.transition="transform .24s cubic-bezier(.4,0,.2,1)";
       fr.style.transform="translateY(100%)";
-      document.body.style.overflow="";
+      unlockBody();
       setTimeout(()=>fr.remove(),260);
       S._filterRefresh=null;
     }
@@ -772,7 +791,11 @@ function rTabs(){
   const TAB_LABELS=["오늘","현황","아이디어"];
   const tabIcons=[SVG.cal,SVG.pipe,SVG.idea];
 
-  const claudeSVG=`<svg width="26" height="26" viewBox="0 0 41 41" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20.5 2C10.835 2 3 9.835 3 19.5S10.835 37 20.5 37 38 29.165 38 19.5 30.165 2 20.5 2z" fill="white" fill-opacity="0.15"/><path d="M27 11.5l-4.5 12-2-5.5H16l-2 5.5-4.5-12h3l2.5 7 2-5.5h3l2 5.5 2.5-7H27z" fill="white"/></svg>`;
+  const claudeSVG=`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="white"/>
+    <path d="M19 16L19.8 19.2L23 20L19.8 20.8L19 24L18.2 20.8L15 20L18.2 19.2L19 16Z" fill="rgba(255,255,255,0.7)"/>
+    <path d="M5 2L5.6 4.4L8 5L5.6 5.6L5 8L4.4 5.6L2 5L4.4 4.4L5 2Z" fill="rgba(255,255,255,0.5)"/>
+  </svg>`;
 
   document.getElementById("R-tabs").innerHTML=`<div class="bottom-tabs glass" style="align-items:flex-end;padding:8px 12px 34px">
     ${tabIcons.map((icon,i)=>{
@@ -800,7 +823,7 @@ function switchTab(t){
   if(fr){
     fr.style.transition="transform .28s cubic-bezier(.4,0,.2,1)";
     fr.style.transform="translateY(100%)";
-    document.body.style.overflow="";
+    unlockBody();
     setTimeout(()=>fr.remove(),300);
     S._filterRefresh=null;
   }
@@ -1317,20 +1340,48 @@ function rIdeas(container){
     <textarea id="ia-memo" class="ia-inp" placeholder="Claude와 나눈 코드, 편집 방식, 참고 링크 등 자유롭게 복붙해놓으세요..." style="height:420px;resize:none;overflow-y:auto;line-height:1.7;font-size:13px;margin-bottom:10px;-webkit-overflow-scrolling:touch;font-family:inherit">${esc(S.newIdeaMemo||"")}</textarea>
     <button class="ia-btn btn-p" id="ia-add">아이디어 저장</button>
   </div>
-  <div class="sec-lbl mu" style="margin-top:8px">2주 루틴 템플릿</div>
-  <div class="rt-intro">요일별 패턴을 설정하고 버튼 한 번으로 2주치를 자동 생성해요.</div>`;
 
-  S.routine.forEach((r,i)=>{
-    html+=`<div class="rt-row divline">
-      <span class="rt-day">${WDAYS[i]}</span>
-      <select class="rt-sel" data-rt-type="${i}">
-        <option value="none"${r.type===RT_NONE?" selected":""}>— 없음</option>
-        ${Object.entries(CT).map(([k,v])=>`<option value="${k}"${r.type===k?" selected":""}>${v.label}</option>`).join("")}
-      </select>
-      <input class="rt-time" type="time" value="${r.time}" data-rt-time="${i}">
-    </div>`;
-  });
-  html+=`<button class="rt-apply btn-p" id="rt-apply">2주치 스케쥴 적용 →</button></div>`;
+  <!-- 빠른 액션 패널 -->
+  <div class="sec-lbl mu" style="margin-top:12px">⚡ 빠른 액션</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <button id="qa-copy-today" class="s1" style="padding:14px 12px;border-radius:16px;border:none;cursor:pointer;text-align:left;font-family:inherit">
+      <div style="font-size:18px;margin-bottom:6px">📋</div>
+      <div style="font-size:13px;font-weight:800;letter-spacing:-.3px">오늘 내용 복사</div>
+      <div style="font-size:11px;font-weight:500;opacity:.6;margin-top:2px">오늘 콘텐츠 목록 클립보드</div>
+    </button>
+    <button id="qa-bulk-status" class="s1" style="padding:14px 12px;border-radius:16px;border:none;cursor:pointer;text-align:left;font-family:inherit">
+      <div style="font-size:18px;margin-bottom:6px">⚡</div>
+      <div style="font-size:13px;font-weight:800;letter-spacing:-.3px">일괄 상태변경</div>
+      <div style="font-size:11px;font-weight:500;opacity:.6;margin-top:2px">선택한 항목 한번에</div>
+    </button>
+    <button id="qa-next-week" class="s1" style="padding:14px 12px;border-radius:16px;border:none;cursor:pointer;text-align:left;font-family:inherit">
+      <div style="font-size:18px;margin-bottom:6px">📅</div>
+      <div style="font-size:13px;font-weight:800;letter-spacing:-.3px">이번주 → 다음주</div>
+      <div style="font-size:11px;font-weight:500;opacity:.6;margin-top:2px">완료 제외 전체 복사</div>
+    </button>
+    <button id="qa-idea-to-sched" class="s1" style="padding:14px 12px;border-radius:16px;border:none;cursor:pointer;text-align:left;font-family:inherit">
+      <div style="font-size:18px;margin-bottom:6px">💡→📅</div>
+      <div style="font-size:13px;font-weight:800;letter-spacing:-.3px">아이디어 일정화</div>
+      <div style="font-size:11px;font-weight:500;opacity:.6;margin-top:2px">아이디어를 이번주 배치</div>
+    </button>
+  </div>
+
+  <!-- 업로드 패턴 통계 -->
+  <div class="sec-lbl mu" style="margin-top:4px">📊 이번주 현황</div>
+  <div style="padding:14px;border-radius:16px;margin-bottom:10px" class="s1">
+    ${(()=>{
+      const tw=getWeekPosts();
+      const done=tw.filter(p=>p.status==="done").length;
+      const pct=tw.length?Math.round(done/tw.length*100):0;
+      const byType=Object.entries(CT).map(([k,v])=>({k,v,n:tw.filter(p=>p.type===k).length})).filter(x=>x.n>0);
+      return`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div><div style="font-size:22px;font-weight:900;letter-spacing:-1px">${done}<span style="font-size:14px;opacity:.5">/${tw.length}</span></div><div style="font-size:11px;font-weight:600;opacity:.6">완료/예정</div></div>
+        <div style="text-align:right"><div style="font-size:22px;font-weight:900;color:#0E9464">${pct}%</div><div style="font-size:11px;font-weight:600;opacity:.6">완료율</div></div>
+      </div>
+      <div style="height:6px;border-radius:3px;background:rgba(128,128,128,.15);overflow:hidden;margin-bottom:10px"><div style="height:100%;border-radius:3px;background:#0E9464;width:${pct}%"></div></div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">${byType.map(x=>`<span style="padding:3px 9px;border-radius:7px;font-size:11px;font-weight:700;background:${x.v.color}18;color:${x.v.color}">${x.v.label} ${x.n}</span>`).join("")}</div>`;
+    })()}
+  </div></div>`;
   mc.innerHTML=html;
 
   document.getElementById("btn-non")?.addEventListener("click",()=>{
@@ -1347,7 +1398,6 @@ function rIdeas(container){
   const memoInp=document.getElementById("ia-memo");
   if(memoInp)memoInp.addEventListener("input",e=>S.newIdeaMemo=e.target.value);
 
-  // Type change: update preview in-place WITHOUT re-rendering (prevents scroll-to-top)
   document.getElementById("ia-sel")?.addEventListener("change",e=>{
     S.newIdeaType=e.target.value;
     const c=ct(S.newIdeaType);
@@ -1358,7 +1408,7 @@ function rIdeas(container){
   });
   document.getElementById("ia-add")?.addEventListener("click",addIdea);
 
-  /* ── BUG FIX: promote saves idea temporarily, restored on cancel ── */
+  /* ── 아이디어 promote ── */
   document.querySelectorAll("[data-promo]").forEach(el=>el.addEventListener("click",e=>{
     e.stopPropagation();haptic("medium");
     const idea=S.ideas.find(x=>x.id===+el.dataset.promo);if(!idea)return;
@@ -1369,9 +1419,44 @@ function rIdeas(container){
   document.querySelectorAll("[data-del-idea]").forEach(el=>el.addEventListener("click",e=>{
     e.stopPropagation();haptic("light");S.ideas=S.ideas.filter(i=>i.id!==+el.dataset.delIdea);save();rMetrics();rIdeas(mc);
   }));
-  document.querySelectorAll("[data-rt-type]").forEach(el=>el.addEventListener("change",()=>{S.routine[+el.dataset.rtType].type=el.value;}));
-  document.querySelectorAll("[data-rt-time]").forEach(el=>el.addEventListener("change",()=>{S.routine[+el.dataset.rtTime].time=el.value;}));
-  document.getElementById("rt-apply")?.addEventListener("click",applyRoutine);
+
+  /* ── 빠른 액션 버튼들 ── */
+  // 오늘 내용 복사
+  document.getElementById("qa-copy-today")?.addEventListener("click",()=>{
+    haptic("save");
+    const today=nowFmt();
+    const todayPosts=S.posts.filter(p=>p.date===today);
+    if(!todayPosts.length){toast("오늘 예정된 콘텐츠가 없어요");return;}
+    const txt=todayPosts.map(p=>`[${st(p.status).label}] ${p.title} (${ct(p.type).label} · ${p.time})`).join("\n");
+    navigator.clipboard?.writeText(txt).then(()=>toast("📋 오늘 콘텐츠 복사됐어요!")).catch(()=>toast("📋 복사 완료!"));
+  });
+
+  // 일괄 상태변경
+  document.getElementById("qa-bulk-status")?.addEventListener("click",()=>{
+    haptic("tap");
+    openBulkStatus();
+  });
+
+  // 이번주→다음주 복사
+  document.getElementById("qa-next-week")?.addEventListener("click",()=>{
+    haptic("medium");
+    const tw=getWeekPosts().filter(p=>p.status!=="done");
+    if(!tw.length){toast("복사할 이번주 콘텐츠가 없어요");return;}
+    tw.forEach(p=>{
+      const d=new Date(p.date+"T00:00:00");d.setDate(d.getDate()+7);
+      S.posts.push({...p,id:S.nextId++,date:fmt(d),status:"idea",pinned:false});
+    });
+    save();rMetrics();rMain();
+    toast(`📅 ${tw.length}개를 다음주로 복사했어요!`);
+    rIdeas(mc);
+  });
+
+  // 아이디어 일정화
+  document.getElementById("qa-idea-to-sched")?.addEventListener("click",()=>{
+    haptic("tap");
+    if(!S.ideas.length){toast("💡 아이디어 보관함이 비어있어요");return;}
+    openIdeaScheduler();
+  });
 }
 
 /* ─── IDEA ACTIONS ─── */
@@ -1414,14 +1499,14 @@ function deletePost(id){
 
 /* ─── MODAL ─── */
 function openModal(mode,post){
-  S.modal={mode,post};rModal();document.body.style.overflow="hidden";
+  S.modal={mode,post};rModal();lockBody();
 }
 function closeModal(cancelled=false){
   if(cancelled&&pendingIdea){
     S.ideas=[...S.ideas,pendingIdea].sort((a,b)=>a.id-b.id);save();
     if(S.tab===2)rIdeas();
   }
-  pendingIdea=null;S.modal=null;document.body.style.overflow="";
+  pendingIdea=null;S.modal=null;unlockBody();
   rModal();rMetrics();
   // Real-time refresh filter if open
   if(S._filterRefresh){
@@ -1479,7 +1564,7 @@ function rModal(){
     if(ms2)ms2.style.transform="translateY(0)";
     if(dim)dim.style.opacity="1";
   }));
-  document.body.style.overflow="hidden";
+  lockBody();
 
   // Swipe to close — entire top drag zone (handle + title)
   let msx=0,mcx=0,mactive=false;
@@ -1497,7 +1582,7 @@ function rModal(){
   document.getElementById("btn-ms")?.addEventListener("click",saveModal);
   document.getElementById("btn-del")?.addEventListener("click",()=>{
     haptic("heavy");if(S.modal?.post?.id)S.posts=S.posts.filter(p=>p.id!==S.modal.post.id);
-    pendingIdea=null;S.modal=null;document.body.style.overflow="";rModal();save();rMetrics();rMain();toast("🗑️ 삭제됐어요");
+    pendingIdea=null;S.modal=null;unlockBody();rModal();save();rMetrics();rMain();toast("🗑️ 삭제됐어요");
   });
   document.getElementById("m-type")?.addEventListener("change",e=>{
     const nc=ct(e.target.value);const cb=document.getElementById("m-ai");if(cb&&nc.aiDef)cb.checked=true;
@@ -1519,7 +1604,7 @@ function saveModal(){
   const justDone=p.status==="done"&&prevSt!=="done";
   if(S.modal.mode==="add")S.posts.push({...p,id:S.nextId++});
   else S.posts=S.posts.map(x=>x.id===p.id?p:x);
-  pendingIdea=null;S.modal=null;document.body.style.overflow="";
+  pendingIdea=null;S.modal=null;unlockBody();
   save();rModal();rMetrics();
   if(justDone){haptic("success");toast(`🎉 ${ct(p.type).short} 업로드 완료!`);}else{haptic("save");toast("✓ 저장됐어요");}
   // Real-time refresh filter if open, otherwise full re-render
@@ -1532,25 +1617,99 @@ function saveModal(){
 }
 
 /* ─── ROUTINE ─── */
-function applyRoutine(){
-  document.querySelectorAll("[data-rt-type]").forEach(el=>{S.routine[+el.dataset.rtType].type=el.value;});
-  document.querySelectorAll("[data-rt-time]").forEach(el=>{S.routine[+el.dataset.rtTime].time=el.value;});
-  const now=new Date(TODAY),day=now.getDay(),monday=new Date(now);
-  monday.setDate(now.getDate()-((day+6)%7)+7);
-  const added=[];
-  for(let w=0;w<2;w++){for(let d=0;d<7;d++){
-    const r=S.routine[d];if(r.type===RT_NONE)continue;
-    const date=new Date(monday);date.setDate(monday.getDate()+w*7+d);
-    const ds=fmt(date);
-    if(!S.posts.find(p=>p.date===ds&&p.type===r.type)){
-      const c=ct(r.type);added.push({id:S.nextId++,type:r.type,title:`${c.label} — ${ds.slice(5).replace("-","/")}`,status:"idea",date:ds,time:r.time,memo:"루틴 자동생성",aiVoice:c.aiDef,pinned:false});
-    }
-  }}
-  if(!added.length){toast("⚠️ 이미 같은 타입이 있어요");return;}
-  S.posts=[...S.posts,...added];S.selDate=fmt(monday);S.tab=0;
-  save();haptic("success");toast(`🗓️ ${added.length}개 자동 추가됐어요`);
-  rMetrics();rMain();rTabs();
+function openBulkStatus(){
+  const panel=document.createElement("div");
+  panel.id="bulk-panel";
+  panel.style.cssText="position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;justify-content:center";
+  const nonDone=S.posts.filter(p=>p.status!=="done").sort((a,b)=>a.date.localeCompare(b.date));
+  panel.innerHTML=`
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,.5)" id="bulk-dim"></div>
+    <div id="bulk-sheet" style="position:relative;width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:0 20px 44px;z-index:1;transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1)" class="sheet-bg">
+      <div id="qs-handle" style="padding:14px 0 8px;display:flex;align-items:center;justify-content:space-between">
+        <div style="width:36px"></div>
+        <div class="handle handle-c"></div>
+        <button id="bulk-close" style="width:32px;height:32px;border-radius:16px;border:none;font-size:16px;cursor:pointer" class="btn-g">✕</button>
+      </div>
+      <div style="font-size:16px;font-weight:900;margin-bottom:4px">일괄 상태변경</div>
+      <div style="font-size:12px;font-weight:600;opacity:.6;margin-bottom:14px">항목 선택 후 상태를 한번에 변경해요</div>
+      <div style="max-height:45vh;overflow-y:auto;margin-bottom:14px">
+        ${nonDone.map(p=>{const c=ct(p.type),s=st(p.status);return`<label style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;margin-bottom:6px;cursor:pointer" class="s1">
+          <input type="checkbox" data-bulk-id="${p.id}" style="width:18px;height:18px;accent-color:#1E90FF;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:800;margin-bottom:2px">${esc(p.title)}</div>
+            <div style="font-size:11px;font-weight:600;color:${c.color}">${c.label} · ${p.date}</div>
+          </div>
+          <span style="padding:3px 9px;border-radius:7px;font-size:10px;font-weight:800;background:${s.bg};color:${s.tc}">${s.label}</span>
+        </label>`;}).join("")}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        ${ST.filter(s=>s.key!=="done").map(s=>`<button data-bulk-st="${s.key}" style="flex:1;padding:9px;border-radius:10px;font-size:12px;font-weight:800;border:none;cursor:pointer;background:${s.bg};color:${s.tc};min-width:60px">${s.label}</button>`).join("")}
+        <button data-bulk-st="done" style="flex:1;padding:9px;border-radius:10px;font-size:12px;font-weight:800;border:none;cursor:pointer;background:#E8F4D8;color:#274E10;min-width:60px">완료 ✓</button>
+      </div>
+    </div>`;
+  document.body.appendChild(panel);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{document.getElementById("bulk-sheet").style.transform="translateY(0)";}));
+  const close=()=>{document.getElementById("bulk-sheet").style.transform="translateY(100%)";setTimeout(()=>panel.remove(),280);};
+  document.getElementById("bulk-dim").addEventListener("click",close);
+  document.getElementById("bulk-close").addEventListener("click",()=>{haptic("light");close();});
+  panel.querySelectorAll("[data-bulk-st]").forEach(btn=>btn.addEventListener("click",()=>{
+    const checked=[...panel.querySelectorAll("[data-bulk-id]:checked")];
+    if(!checked.length){toast("⚠️ 항목을 먼저 선택해주세요");return;}
+    haptic("success");
+    checked.forEach(cb=>{const p=S.posts.find(x=>x.id===+cb.dataset.bulkId);if(p)p.status=btn.dataset.bulkSt;});
+    save();rMetrics();rMain();close();
+    toast(`✅ ${checked.length}개 상태 변경됐어요`);
+  }));
 }
+
+function openIdeaScheduler(){
+  const panel=document.createElement("div");
+  panel.id="idea-sched-panel";
+  panel.style.cssText="position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;justify-content:center";
+  const WDAY=["일","월","화","수","목","금","토"];
+  const now=new Date();
+  const monday=new Date(now);monday.setDate(now.getDate()-((now.getDay()+6)%7));
+  const weekDates=Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return fmt(d);});
+  panel.innerHTML=`
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,.5)" id="isched-dim"></div>
+    <div id="isched-sheet" style="position:relative;width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:0 20px 44px;z-index:1;transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1)" class="sheet-bg">
+      <div style="padding:14px 0 8px;display:flex;align-items:center;justify-content:space-between">
+        <div style="width:36px"></div>
+        <div class="handle handle-c"></div>
+        <button id="isched-close" style="width:32px;height:32px;border-radius:16px;border:none;font-size:16px;cursor:pointer" class="btn-g">✕</button>
+      </div>
+      <div style="font-size:16px;font-weight:900;margin-bottom:4px">💡 아이디어 일정화</div>
+      <div style="font-size:12px;font-weight:600;opacity:.6;margin-bottom:14px">아이디어를 이번주 날짜에 배치해요</div>
+      <div style="max-height:50vh;overflow-y:auto">
+        ${S.ideas.map(i=>{const c=ct(i.type||"routine_carousel");return`<div style="padding:12px;border-radius:12px;margin-bottom:8px" class="s1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            ${platformBadge(c.platform,"sm")}
+            <div style="font-size:13px;font-weight:800;flex:1">${esc(i.text)}</div>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            ${weekDates.map(date=>{const d=new Date(date+"T00:00:00");const isToday=date===nowFmt();return`<button data-isched-id="${i.id}" data-isched-date="${date}" style="padding:5px 9px;border-radius:8px;font-size:10px;font-weight:800;border:1.5px solid ${isToday?"#0E9464":"rgba(128,128,128,.2)"};background:${isToday?"#0E946420":"transparent"};color:${isToday?"#0E9464":"inherit"};cursor:pointer">${WDAY[d.getDay()]}${date.slice(8)}</button>`;}).join("")}
+          </div>
+        </div>`;}).join("")}
+      </div>
+    </div>`;
+  document.body.appendChild(panel);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{document.getElementById("isched-sheet").style.transform="translateY(0)";}));
+  const close=()=>{document.getElementById("isched-sheet").style.transform="translateY(100%)";setTimeout(()=>panel.remove(),280);};
+  document.getElementById("isched-dim").addEventListener("click",close);
+  document.getElementById("isched-close").addEventListener("click",()=>{haptic("light");close();});
+  panel.querySelectorAll("[data-isched-id]").forEach(btn=>btn.addEventListener("click",()=>{
+    haptic("save");
+    const idea=S.ideas.find(x=>x.id===+btn.dataset.ischedId);if(!idea)return;
+    const c=ct(idea.type||"routine_carousel");
+    S.posts.push({id:S.nextId++,type:idea.type||"routine_carousel",title:idea.text,status:"idea",date:btn.dataset.ischedDate,time:"18:00",memo:idea.memo||"",aiVoice:c.aiDef,pinned:false});
+    S.ideas=S.ideas.filter(x=>x.id!==idea.id);
+    save();rMetrics();
+    btn.closest("div[style]").style.opacity="0.4";
+    toast(`📅 ${idea.text.slice(0,20)} 일정 등록됐어요!`);
+    setTimeout(()=>{close();rMain();rIdeas();},800);
+  }));
+}
+
 
 /* ─── STATS PAGE ─── */
 function openStats(){
@@ -1888,147 +2047,152 @@ function updateCalContent(dir){
 /* ─── FILTER VIEW ─── */
 function openFilterView(filter){
   haptic("light");
-  // Remove existing if open
   document.getElementById("filter-root")?.remove();
-
-  const root=document.getElementById("R-filter"); // separate from R-modal so rModal() won't wipe it
+  const root=document.getElementById("R-filter");
   const div=document.createElement("div");
-  div.id="filter-root";
-  div.dataset.filter=filter;
-  // Fixed bottom sheet — sits on top permanently, NOT dim-bg so main stays interactive
+  div.id="filter-root";div.dataset.filter=filter;
   div.style.cssText="position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;z-index:90;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)";
   root.appendChild(div);
 
-  // Render rows function (callable anytime for real-time update)
   function renderRows(){
-    let posts=[];
-    if(filter==="done")posts=S.posts.filter(p=>p.status==="done").sort((a,b)=>b.date.localeCompare(a.date));
-    else if(filter==="work")posts=S.posts.filter(p=>["filming","editing","ready"].includes(p.status)).sort((a,b)=>a.date.localeCompare(b.date));
-
+    const isWeek=filter==="week";
     const isDone=filter==="done";
-    const icon=isDone?"✅":"⚡";
-    const title=isDone?"완료된 콘텐츠":"해야 할 콘텐츠";
+    let posts=[];
+    if(isDone) posts=S.posts.filter(p=>p.status==="done").sort((a,b)=>b.date.localeCompare(a.date));
+    else if(filter==="work") posts=S.posts.filter(p=>["filming","editing","ready"].includes(p.status)).sort((a,b)=>a.date.localeCompare(b.date));
+    else if(isWeek) posts=getWeekPosts().sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
 
-    // Status urgency for work items
-    const urgency={filming:{icon:"📸",label:"촬영 필요",color:"#E09820",pulse:false},editing:{icon:"✂️",label:"편집 중",color:"#2878D4",pulse:true},ready:{icon:"🚀",label:"업로드 대기!",color:"#0D9060",pulse:true}};
+    const icon=isDone?"✅":isWeek?"📅":"⚡";
+    const title=isDone?"완료된 콘텐츠":isWeek?"이번주 콘텐츠":"해야 할 콘텐츠";
+    const urgency={filming:{icon:"📸",label:"촬영 필요",color:"#E09820"},editing:{icon:"✂️",label:"편집 중",color:"#2878D4"},ready:{icon:"🚀",label:"업로드 대기!",color:"#0D9060"},idea:{icon:"💡",label:"기획",color:"#9B59B6"},done:{icon:"✓",label:"완료",color:"#27AE60"}};
 
-    const rows=posts.length?posts.map(p=>{
-      const c=ct(p.type),s=st(p.status);
-      const urg=urgency[p.status]||{icon:"▶",label:s.label,color:s.dot,pulse:false};
-
-      if(isDone){
-        // Done: clean, calm
-        return`<div class="filter-row" data-filter-cid="${p.id}" style="cursor:pointer">
-          <div style="width:4px;align-self:stretch;border-radius:2px;background:${c.color};flex-shrink:0"></div>
-          <div class="filter-row-body">
-            <div class="filter-row-title">${esc(p.title)}</div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">
-              ${platformBadge(c.platform,"sm")}
-              <span class="filter-row-meta mu2">${c.label} · ${p.date} · ${p.time}</span>
-            </div>
-            ${p.memo?`<div style="font-size:11px;margin-top:5px;padding:5px 8px;border-radius:6px;background:${c.color}12;color:${c.color};font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.memo.split('\n')[0].slice(0,50))}${p.memo.length>50?"…":""}</div>`:""}
+    let rows="";
+    if(isWeek&&posts.length){
+      const grouped={};
+      posts.forEach(p=>{if(!grouped[p.date])grouped[p.date]=[];grouped[p.date].push(p);});
+      const WDAY=["일","월","화","수","목","금","토"];
+      Object.keys(grouped).sort().forEach(date=>{
+        const d=new Date(date+"T00:00:00");
+        const isToday=date===nowFmt();
+        const dayLabel=`${WDAY[d.getDay()]}요일 ${date.slice(5).replace("-","/")}`;
+        rows+=`<div style="margin-bottom:4px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:0 2px">
+            <div style="width:3px;height:16px;border-radius:2px;background:${isToday?"#0E9464":"#555"};flex-shrink:0"></div>
+            <span style="font-size:12px;font-weight:800;${isToday?"color:#0E9464":""}">${isToday?"오늘 · ":""}${dayLabel}</span>
+            <span style="font-size:10px;font-weight:700;opacity:.5">${grouped[date].length}개</span>
           </div>
-          <div style="padding:5px 11px;border-radius:10px;font-size:11px;font-weight:800;background:#E8F4D8;color:#274E10;flex-shrink:0">완료 ✓</div>
+          ${grouped[date].map(p=>{
+            const c=ct(p.type),s=st(p.status);
+            return`<div data-edit-id="${p.id}" style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:13px;margin-bottom:6px;cursor:pointer;border:1.5px solid ${c.color}22;background:${c.color}08" ontouchstart="this.style.transform='scale(.98)'" ontouchend="this.style.transform=''">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:800;letter-spacing:-.3px;margin-bottom:3px">${esc(p.title)}</div>
+                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                  ${platformBadge(c.platform,"sm")}
+                  <span style="font-size:10px;font-weight:600;color:${c.color}">${c.label}</span>
+                  <span style="font-size:10px;opacity:.5">· ${p.time}</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                <span style="padding:4px 10px;border-radius:8px;font-size:10px;font-weight:800;background:${s.bg};color:${s.tc};white-space:nowrap">${s.label}</span>
+                <div data-quick-id="${p.id}" style="padding:4px 10px;border-radius:8px;font-size:10px;font-weight:700;background:${c.color}22;color:${c.color};cursor:pointer;white-space:nowrap" ontouchstart="event.stopPropagation()">상태변경</div>
+              </div>
+            </div>`;
+          }).join("")}
         </div>`;
-      }else{
-        // Work: URGENT design
-        const isReady=p.status==="ready";
-        const isEditing=p.status==="editing";
-        return`<div style="margin-bottom:10px;border-radius:16px;overflow:hidden;border:2px solid ${urg.color}40;position:relative">
-          ${isReady?`<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${urg.color},transparent)"></div>`:""}
-          <div style="padding:14px 14px 12px;background:${urg.color}0D;display:flex;align-items:flex-start;gap:10px">
-            <!-- 왼쪽: 탭하면 편집창 -->
-            <div data-edit-id="${p.id}" style="flex:1;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.08)">
-              <div style="font-size:16px;font-weight:900;letter-spacing:-.4px;margin-bottom:4px;line-height:1.3">${esc(p.title)}</div>
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:${p.memo?'7px':'0'}">
+      });
+    }else if(posts.length){
+      rows=posts.map(p=>{
+        const c=ct(p.type),s=st(p.status);
+        const urg=urgency[p.status]||{icon:"▶",label:s.label,color:s.dot};
+        if(isDone){
+          return`<div class="filter-row" data-filter-cid="${p.id}" style="cursor:pointer">
+            <div style="width:4px;align-self:stretch;border-radius:2px;background:${c.color};flex-shrink:0"></div>
+            <div class="filter-row-body">
+              <div class="filter-row-title">${esc(p.title)}</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">
                 ${platformBadge(c.platform,"sm")}
-                <span style="font-size:11px;font-weight:600;opacity:.7">${c.label} · ${p.date}</span>
+                <span class="filter-row-meta mu2">${c.label} · ${p.date} · ${p.time}</span>
               </div>
-              ${p.memo?`<div style="font-size:11px;padding:6px 10px;border-radius:8px;background:${urg.color}15;color:${urg.color};font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.memo.split('\n')[0].slice(0,55))}${p.memo.length>55?"…":""}</div>`:""}
-              <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">
-                ${c.tools.map(t=>`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;background:${urg.color}20;color:${urg.color}">${t}</span>`).join("")}
-                ${p.aiVoice?`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;background:#EEEDFE;color:#6B68CC">AI음성</span>`:""}
-                <span style="font-size:10px;font-weight:700;margin-left:auto;opacity:.6">${p.time}</span>
+              ${p.memo?`<div style="font-size:11px;margin-top:5px;padding:5px 8px;border-radius:6px;background:${c.color}12;color:${c.color};font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.memo.split('\n')[0].slice(0,50))}${p.memo.length>50?"…":""}</div>`:""}
+            </div>
+            <div style="padding:5px 11px;border-radius:10px;font-size:11px;font-weight:800;background:#E8F4D8;color:#274E10;flex-shrink:0">완료 ✓</div>
+          </div>`;
+        }else{
+          const isReady=p.status==="ready";
+          return`<div style="margin-bottom:10px;border-radius:16px;overflow:hidden;border:2px solid ${urg.color}40;position:relative">
+            ${isReady?`<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${urg.color},transparent)"></div>`:""}
+            <div style="padding:14px 14px 12px;background:${urg.color}0D;display:flex;align-items:flex-start;gap:10px">
+              <div data-edit-id="${p.id}" style="flex:1;min-width:0;cursor:pointer">
+                <div style="font-size:16px;font-weight:900;letter-spacing:-.4px;margin-bottom:4px;line-height:1.3">${esc(p.title)}</div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:${p.memo?'7px':'0'}">
+                  ${platformBadge(c.platform,"sm")}
+                  <span style="font-size:11px;font-weight:600;opacity:.7">${c.label} · ${p.date}</span>
+                </div>
+                ${p.memo?`<div style="font-size:11px;padding:6px 10px;border-radius:8px;background:${urg.color}15;color:${urg.color};font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.memo.split('\n')[0].slice(0,55))}${p.memo.length>55?"…":""}</div>`:""}
+                <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">
+                  ${c.tools.map(t=>`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;background:${urg.color}20;color:${urg.color}">${t}</span>`).join("")}
+                  ${p.aiVoice?`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;background:#EEEDFE;color:#6B68CC">AI음성</span>`:""}
+                  <span style="font-size:10px;font-weight:700;margin-left:auto;opacity:.6">${p.time}</span>
+                </div>
+              </div>
+              <div data-quick-id="${p.id}" style="flex-shrink:0;text-align:center;padding:10px 13px;border-radius:14px;background:${urg.color};min-width:68px;cursor:pointer;transition:transform .12s;align-self:center" ontouchstart="this.style.transform='scale(.90)'" ontouchend="this.style.transform=''">
+                <div style="font-size:20px;line-height:1">${urg.icon}</div>
+                <div style="font-size:10px;font-weight:900;color:#fff;margin-top:4px">${urg.label}</div>
               </div>
             </div>
-            <!-- 오른쪽: 탭하면 상태변경 -->
-            <div data-quick-id="${p.id}" style="flex-shrink:0;text-align:center;padding:10px 13px;border-radius:14px;background:${urg.color};min-width:68px;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.15);transition:transform .12s;align-self:center" ontouchstart="this.style.transform='scale(.90)'" ontouchend="this.style.transform=''">
-              <div style="font-size:20px;line-height:1">${urg.icon}</div>
-              <div style="font-size:10px;font-weight:900;color:#fff;margin-top:4px;letter-spacing:.2px;line-height:1.2">${urg.label}</div>
-            </div>
-          </div>
-        </div>`;
-      }
-    }).join(""):`<div class="no-item" style="text-align:center;padding:24px;font-size:14px;margin-top:8px">항목 없음 🎉</div>`;
+          </div>`;
+        }
+      }).join("");
+    }else{
+      rows=`<div class="no-item" style="text-align:center;padding:24px;font-size:14px;margin-top:8px">항목 없음 🎉</div>`;
+    }
 
-    // Header urgency bar for work view
-    const headerBg=isDone?"":"linear-gradient(135deg,#1a0a00,#0f0f0f)";
-    const headerBorder=isDone?"":"border-bottom:2px solid #E0920040";
-
-    div.innerHTML=`<div class="filter-sheet" id="filter-sheet" style="${isDone?"":"background:#0f0f0f"}">
+    div.innerHTML=`<div class="filter-sheet" id="filter-sheet" style="${isDone||isWeek?"":"background:#0f0f0f"}">
       <div class="handle-zone" id="filter-handle"><div class="handle handle-c"></div></div>
-      <div class="filter-header" style="${headerBorder};${isDone?"":"padding-bottom:14px"}">
+      <div class="filter-header" style="${isDone||isWeek?"":"border-bottom:2px solid #E0920040"};padding-bottom:12px">
         <div style="display:flex;flex-direction:column;gap:2px">
-          <div class="filter-title" style="${isDone?"":"color:#E09820"}">${icon} ${title} <span id="filter-count">(${posts.length})</span></div>
-          ${!isDone&&posts.length?`<div style="font-size:11px;font-weight:700;color:#E09820;opacity:.8">지금 당장 처리해야 할 콘텐츠예요</div>`:""}
+          <div class="filter-title" style="${isWeek?"color:#0E9464":isDone?"":"color:#E09820"}">${icon} ${title} <span id="filter-count">(${posts.length})</span></div>
+          ${isWeek?`<div style="font-size:11px;font-weight:600;opacity:.65">탭 → 편집 · 상태변경 → 상태 변경</div>`:""}
+          ${!isDone&&!isWeek&&posts.length?`<div style="font-size:11px;font-weight:700;color:#E09820;opacity:.8">지금 당장 처리해야 할 콘텐츠예요</div>`:""}
         </div>
         <button class="calv-close btn-g" id="filter-close">✕</button>
       </div>
       <div class="filter-scroll" id="filter-scroll" style="padding:${isDone?"0 20px 32px":"12px 16px 32px"}">${rows}</div>
     </div>`;
 
-    // quick-status button → status change panel
+    // bind clicks
     div.querySelectorAll("[data-quick-id]").forEach(el=>el.addEventListener("click",e=>{
-      e.stopPropagation();
-      haptic("medium");
-      const id=+el.dataset.quickId;
-      openQuickStatus(id,renderRows);
+      e.stopPropagation();haptic("medium");
+      openQuickStatus(+el.dataset.quickId,renderRows);
     }));
-
-    // left content area → full edit modal
     div.querySelectorAll("[data-edit-id]").forEach(el=>el.addEventListener("click",e=>{
+      if(e.target.closest("[data-quick-id]"))return;
       e.stopPropagation();haptic("light");
-      const id=+el.dataset.editId;
-      const p=S.posts.find(x=>x.id===id);
-      if(!p)return;
+      const p=S.posts.find(x=>x.id===+el.dataset.editId);if(!p)return;
       S._filterRefresh=()=>{renderRows();rMetrics();};
       openModal("edit",{...p});
     }));
-
-    // done rows — whole row opens edit
     div.querySelectorAll("[data-filter-cid]").forEach(el=>el.addEventListener("click",e=>{
       if(e.target.closest("[data-quick-id]")||e.target.closest("[data-edit-id]"))return;
       e.stopPropagation();haptic("light");
-      const id=+el.dataset.filterCid;
-      const p=S.posts.find(x=>x.id===id);
-      if(!p)return;
+      const p=S.posts.find(x=>x.id===+el.dataset.filterCid);if(!p)return;
       S._filterRefresh=()=>{renderRows();rMetrics();};
       openModal("edit",{...p});
     }));
-
-    // Close button
     div.querySelector("#filter-close")?.addEventListener("click",()=>{haptic("light");closeFilter();});
-
-    // Swipe handle down to close
     const handle=div.querySelector("#filter-handle");
     const sheet=div.querySelector("#filter-sheet");
     if(handle&&sheet){
       let fsy=0,fcy=0,factive=false;
-      handle.addEventListener("touchstart",e=>{fsy=e.touches[0].clientY;fcy=0;factive=true;div.style.transition="none";},{passive:true});
-      window.addEventListener("touchmove",e=>{if(!factive)return;const dy=e.touches[0].clientY-fsy;fcy=Math.max(0,dy);div.style.transform=`translateY(${fcy}px)`;},{passive:true});
-      window.addEventListener("touchend",()=>{
-        if(!factive)return;factive=false;
-        div.style.transition="transform .25s cubic-bezier(.4,0,.2,1)";
-        if(fcy>80)closeFilter();
-        else div.style.transform="translateY(0)";
-      },{passive:true});
+      handle.addEventListener("touchstart",e=>{fsy=e.touches[0].clientY;fcy=0;factive=true;sheet.style.transition="none";},{passive:true});
+      handle.addEventListener("touchmove",e=>{if(!factive)return;e.preventDefault();const dy=e.touches[0].clientY-fsy;fcy=Math.max(0,dy);sheet.style.transform=`translateY(${fcy}px)`;},{passive:false});
+      handle.addEventListener("touchend",()=>{if(!factive)return;factive=false;sheet.style.transition="transform .24s cubic-bezier(.4,0,.2,1)";if(fcy>80)closeFilter();else sheet.style.transform="translateY(0)";},{passive:true});
     }
   }
 
   const closeFilter=()=>{
-    div.style.transition="transform .28s cubic-bezier(.4,0,.2,1)";
     div.style.transform="translateY(100%)";
-    document.body.style.overflow=""; // unlock background
+    unlockBody();
     setTimeout(()=>div.remove(),300);
     S._filterRefresh=null;
   };
@@ -2036,10 +2200,9 @@ function openFilterView(filter){
   renderRows();
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     div.style.transform="translateY(0)";
-    document.body.style.overflow="hidden"; // lock background
+    lockBody();
   }));
 }
-
 /* ─── QUICK STATUS CHANGE ─── */
 function openQuickStatus(id,onDone){
   const p=S.posts.find(x=>x.id===id);if(!p)return;
@@ -2471,6 +2634,16 @@ CTA: 뽀로롱자막효과2
 한국어로. 간결하게.`;
 
 let aiChatHistory=[];
+let aiTotalIn=+localStorage.getItem("bf_tok_in")||0;
+let aiTotalOut=+localStorage.getItem("bf_tok_out")||0;
+function saveTokens(){localStorage.setItem("bf_tok_in",aiTotalIn);localStorage.setItem("bf_tok_out",aiTotalOut);}
+function calcCost(inTok,outTok){return((inTok/1000000)*0.80+(outTok/1000000)*4.00);}
+function fmtCost(usd){return usd<0.01?`$${(usd*100).toFixed(2)}¢`:`$${usd.toFixed(4)}`;}
+function updateUsageBadge(){
+  const el=document.getElementById("ai-usage-val");if(!el)return;
+  const total=calcCost(aiTotalIn,aiTotalOut);
+  el.textContent=`${fmtCost(total)} 사용 (입력 ${(aiTotalIn/1000).toFixed(1)}k / 출력 ${(aiTotalOut/1000).toFixed(1)}k 토큰)`;
+}
 
 function openAIChat(){
   // API 키 없으면 입력 화면 먼저
@@ -2539,6 +2712,15 @@ function openAIChat(){
       </div>
       <button class="calv-close btn-g" id="ai-close">✕</button>
     </div>
+    <!-- 사용량 표시 -->
+    <div style="margin:0 14px 8px;padding:8px 12px;border-radius:12px;display:flex;align-items:center;gap:8px" class="s1">
+      <div style="font-size:11px;flex:1;min-width:0">
+        <span style="opacity:.5;font-weight:600">누적 비용: </span>
+        <span style="font-weight:800" id="ai-usage-val">-</span>
+      </div>
+      <button id="ai-reset-usage" style="padding:4px 9px;border-radius:7px;font-size:10px;font-weight:700;border:none;cursor:pointer" class="btn-g">초기화</button>
+      <a href="https://console.anthropic.com/settings/billing" target="_blank" style="padding:4px 9px;border-radius:7px;font-size:10px;font-weight:700;text-decoration:none;display:inline-block" class="btn-g">잔액 ↗</a>
+    </div>
     <div class="ai-messages" id="ai-messages">
       <div class="ai-msg ai-msg-ai">안녕하세요 영민씨! 🎬<br><br>어떤 콘텐츠 아이디어가 있으신가요? 말씀해 주시면 제가 정리해서 바로 스케쥴러에 등록해드릴게요!</div>
     </div>
@@ -2551,13 +2733,18 @@ function openAIChat(){
   root.appendChild(div);
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     document.getElementById("ai-overlay").style.transform="translateY(0)";
-    setTimeout(()=>document.getElementById("ai-inp")?.focus(),380);
+    setTimeout(()=>{document.getElementById("ai-inp")?.focus();updateUsageBadge();},380);
   }));
   aiChatHistory=[];
   document.getElementById("ai-close").addEventListener("click",()=>{
     haptic("light");
     document.getElementById("ai-overlay").style.transform="translateY(100%)";
     setTimeout(()=>div.remove(),320);
+  });
+  document.getElementById("ai-reset-usage")?.addEventListener("click",()=>{
+    if(!confirm("누적 사용량을 초기화할까요?"))return;
+    aiTotalIn=0;aiTotalOut=0;saveTokens();updateUsageBadge();
+    toast("사용량 초기화됐어요");
   });
 
   const inp=document.getElementById("ai-inp");
@@ -2592,7 +2779,7 @@ async function sendAIMessage(){
         "anthropic-dangerous-direct-browser-access":"true"
       },
       body:JSON.stringify({
-        model:"claude-sonnet-4-6",
+        model:"claude-haiku-4-5-20251001",
         max_tokens:1000,
         system:AI_SYSTEM,
         messages:aiChatHistory
@@ -2606,6 +2793,21 @@ async function sendAIMessage(){
       return;
     }
     const reply=data.content?.[0]?.text||"응답을 받지 못했어요.";
+
+    // Track token usage
+    if(data.usage){
+      aiTotalIn+=(data.usage.input_tokens||0);
+      aiTotalOut+=(data.usage.output_tokens||0);
+      saveTokens();updateUsageBadge();
+      // Show per-message cost in small badge
+      const msgCost=calcCost(data.usage.input_tokens||0,data.usage.output_tokens||0);
+      if(msgCost>0){
+        const costBadge=document.createElement("div");
+        costBadge.style.cssText="font-size:10px;font-weight:600;opacity:.4;text-align:right;margin-top:-6px;margin-bottom:4px;padding-right:4px";
+        costBadge.textContent=`이 대화: ${fmtCost(msgCost)}`;
+        document.getElementById("ai-messages")?.appendChild(costBadge);
+      }
+    }
 
     // Remove thinking
     document.getElementById(thinkId)?.remove();
@@ -2816,7 +3018,7 @@ function openSearch(){
   }));
   const close=()=>{
     document.getElementById("srch-overlay").style.transform="translateY(100%)";
-    document.body.style.overflow="";
+    unlockBody();
     setTimeout(()=>div.remove(),320);
   };
   document.getElementById("srch-cancel").addEventListener("click",()=>{haptic("light");close();});
